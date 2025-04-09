@@ -76,8 +76,8 @@ app.post("/login", (req, res) => {
 /* Definir Departamentos */
 app.post("/departamentos", (req, res) => {
   const { name, departamento } = req.body;
-  const sql = "UPDATE users SET departamento = '?' WHERE name = '?'";
-  db.query(sql, [name, departamento], (err, result) => {
+  const sql = "UPDATE users SET departamento = ? WHERE name = ?";
+  db.query(sql, [departamento, name], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send({ message: "Departamento atribuído com sucesso!" });
   });
@@ -94,8 +94,8 @@ app.get("/departamentos", (req, res) => {
 /* Definir Aniversários */
 app.post("/aniversarios", (req, res) => {
   const { name, date } = req.body;
-  const sql = "UPDATE users SET aniversario = '?' WHERE name = '?'";
-  db.query(sql, [name, date], (err, result) => {
+  const sql = "UPDATE users SET aniversario = ? WHERE name = ?";
+  db.query(sql, [date, name], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send({ message: "Aniversário registrado com sucesso!" });
   });
@@ -112,7 +112,7 @@ app.get("/aniversarios", (req, res) => {
 /* Definir Datas de Fazer o Caixa */
 app.post("/data_caixa", (req, res) => {
   const { date } = req.body;
-  const sql = "UPDATE caixa SET data_realizacao = '?'";
+  const sql = "UPDATE caixa SET data_realizacao = ?";
   db.query(sql, [date], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send({ message: "Data do caixa definida com sucesso!" });
@@ -130,7 +130,7 @@ app.get("/data_caixa", (req, res) => {
 /* Pausar ou Retomar Tarefas */
 app.post("/tasks/pause", (req, res) => {
   const { status } = req.body; // status = "paused" ou "active"
-  const sql = "UPDATE tarefas SET status = '?'";
+  const sql = "UPDATE tarefas SET status = ?";
   db.query(sql, [status], (err, result) => {
     if (err) return res.status(500).send(err);
     const message =
@@ -151,21 +151,40 @@ app.get("/tasks/status", (req, res) => {
 
 /* Transferir Propriedade de Admin */
 app.post("/transfer-admin", (req, res) => {
-  const { newAdminId } = req.body;
-  const sql = "UPDATE users SET role = 'admin' where name = '?'";
-  db.query(sql, [newAdminId], (err, result) => {
+  const { newAdminId, role } = req.body;
+  const sql = "UPDATE users SET role = ? WHERE name = ?";
+  db.query(sql, [role, newAdminId], (err, result) => {
     if (err) return res.status(500).send(err);
-    res.send({ message: "Admin transferido com sucesso!" });
+    res.send({ message: `Usuário definido como ${role} com sucesso!` });
   });
 });
 
 /* Remover Admin */
 app.post("/remove-admin", (req, res) => {
   const { currentAdminId } = req.body;
-  const sql = "UPDATE users SET role = 'user' where name = '?'";
+  const sql = "UPDATE users SET role = 'user' WHERE name = ?";
   db.query(sql, [currentAdminId], (err, result) => {
     if (err) return res.status(500).send(err);
     res.send({ message: "Admin removido com sucesso!" });
+  });
+});
+
+/*Usuários*/
+app.get("/users", (req, res) => {
+  const sql = "SELECT * FROM users";
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).send(err);
+    res.send(results);
+  });
+});
+
+/*Remover Usuário*/
+app.post("/remove-user", (req, res) => {
+  const { name } = req.body;
+  const sql = "DELETE FROM users WHERE name = ?";
+  db.query(sql, [name], (err, result) => {
+    if (err) return res.status(500).send(err);
+    res.send({ message: "Usuário removido com sucesso!" });
   });
 });
 
