@@ -33,12 +33,14 @@ app.post("/register", (req, res) => {
 /* Login */
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
+
   if (!email || !password) {
     return res.status(400).send({
       success: false,
       message: "Por favor, preencha todos os campos.",
     });
   }
+
   const sql = "SELECT * FROM users WHERE email = ?";
   db.query(sql, [email], (err, results) => {
     if (err) {
@@ -48,16 +50,22 @@ app.post("/login", (req, res) => {
         message: "Erro no servidor. Tente novamente mais tarde.",
       });
     }
+
     if (results.length === 0) {
       return res
         .status(401)
         .send({ success: false, message: "Email ou senha incorretos." });
     }
+
     const user = results[0];
+    console.log("Usuário encontrado no banco:", user);
+
     if (user.password === password) {
-      return res
-        .status(200)
-        .send({ success: true, message: "Login realizado com sucesso!" });
+      return res.status(200).send({
+        success: true,
+        role: user.role,
+        message: "Login realizado com sucesso!",
+      });
     } else {
       return res
         .status(401)

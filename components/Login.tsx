@@ -30,6 +30,10 @@ const Login = ({ navigation }: { navigation: any }) => {
         password,
       });
 
+      console.log("Resposta completa da API:", response.data);
+      await AsyncStorage.setItem("role", response.data.role);
+      console.log("Role salvo no AsyncStorage:", response.data.role);
+
       if (response.data.success) {
         Alert.alert("Sucesso", "Login realizado com sucesso!");
         if (rememberMe) {

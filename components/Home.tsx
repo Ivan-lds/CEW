@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -12,6 +12,7 @@ import {
 import { FontAwesome } from "@expo/vector-icons";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Definição da interface Notification
 interface Notification {
@@ -21,6 +22,7 @@ interface Notification {
 
 const Home = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false); // Estado para verificar se é admin
   const navigation = useNavigation(); // Navegação para o menu
 
   // Lista de notificações com a interface Notification
@@ -29,6 +31,16 @@ const Home = () => {
     { id: "2", message: "💰 Caixa: Novo relatório financeiro disponível." },
     { id: "3", message: "✍ Reunião agendada para 10/04/2025." },
   ];
+
+  // Verificar se o usuário é administrador
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const role = await AsyncStorage.getItem("role");
+      console.log("Role lido do AsyncStorage:", role);
+      setIsAdmin(role === "admin");
+    };
+    checkAdminStatus();
+  }, []);
 
   const toggleModal = () => {
     setIsModalVisible(!isModalVisible);
@@ -106,7 +118,7 @@ const Home = () => {
         </Text>
         <Text
           style={styles.menuItem}
-          onPress={() => navigation.navigate("Configs")}
+          onPress={() => navigation.navigate(isAdmin ? "Admin" : "Configs")}
         >
           ⚙️
         </Text>

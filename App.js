@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react";
-import { View, Image, StyleSheet } from "react-native";
+import { View, Image, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { FontAwesome } from "@expo/vector-icons";
 import Home from "./components/Home";
 import Tasks from "./components/Tasks";
 import Departaments from "./components/Departaments";
 import LaundryGas from "./components/LaundryGas";
 import Budget from "./components/Budget";
 import Configs from "./components/Configs";
-import Login from "./components/Login"; // Importando a tela de Login
-import Cadastro from "./components/Cadastro"; // Importando a tela de Cadastro
+import Login from "./components/Login";
+import Cadastro from "./components/Cadastro";
+import Admin from "./components/Admin";
 
 // Componente SplashScreen
 const SplashScreen = () => {
@@ -25,6 +28,17 @@ const Stack = createStackNavigator();
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleLogout = async (navigation) => {
+    try {
+      await AsyncStorage.clear(); // Limpa os dados salvos no AsyncStorage
+      Alert.alert("Logout", "Você saiu da sua conta com sucesso!");
+      navigation.navigate("Login"); // Navega para a tela de login
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      Alert.alert("Erro", "Não foi possível fazer logout.");
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -84,7 +98,36 @@ export default function App() {
             <Stack.Screen
               name="Configs"
               component={Configs}
-              options={{ headerShown: true, title: "Configurações" }}
+              options={({ navigation }) => ({
+                headerShown: true,
+                title: "Configurações",
+                headerRight: () => (
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={() => handleLogout(navigation)}
+                  >
+                    <FontAwesome name="sign-out" size={24} color="#333" />
+                    <Text style={styles.logoutText}>Sair</Text>
+                  </TouchableOpacity>
+                ),
+              })}
+            />
+            <Stack.Screen
+              name="Admin"
+              component={Admin}
+              options={({ navigation }) => ({
+                headerShown: true, 
+                title: "Configurações", 
+                headerRight: () => (
+                  <TouchableOpacity
+                    style={styles.logoutButton}
+                    onPress={() => handleLogout(navigation)}
+                  >
+                    <FontAwesome name="sign-out" size={24} color="#333" />
+                    <Text style={styles.logoutText}>Sair</Text>
+                  </TouchableOpacity>
+                ),
+              })}
             />
           </>
         )}
@@ -104,5 +147,26 @@ const styles = StyleSheet.create({
     width: 400,
     height: 800,
     resizeMode: "cover",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10, // Alinha à direita
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  logoutText: {
+    fontSize: 16,
+    marginLeft: 5,
+    color: "#333",
+    fontWeight: "bold",
   },
 });
