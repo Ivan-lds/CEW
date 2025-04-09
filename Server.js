@@ -1,4 +1,3 @@
-/* Importações e configuração inicial já existentes */
 const express = require("express");
 const mysql = require("mysql");
 const bodyParser = require("body-parser");
@@ -170,7 +169,6 @@ app.post("/remove-admin", (req, res) => {
   });
 });
 
-/* Start do Servidor */
 app.listen(3001, () => {
   console.log("Servidor rodando na porta 3001");
 });

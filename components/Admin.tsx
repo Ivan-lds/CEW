@@ -11,15 +11,14 @@ import {
 import { TouchableOpacity } from "react-native-gesture-handler";
 
 const Admin = () => {
-  const [taskFrequency, setTaskFrequency] = useState(0); // Em dias
-  const [tasksPaused, setTasksPaused] = useState(false); // Estado para pausar tarefas
+  const [taskFrequency, setTaskFrequency] = useState(0);
+  const [tasksPaused, setTasksPaused] = useState(false);
   const [tasks, setTasks] = useState([
     { id: 1, name: "Limpar cozinha", assignedTo: "João", completed: false },
     { id: 2, name: "Lavar banheiro", assignedTo: "Ana", completed: false },
     { id: 3, name: "Organizar sala", assignedTo: "Maria", completed: false },
   ]);
 
-  // Função para definir frequência das tarefas
   const handleSetTaskFrequency = (frequency) => {
     if (!frequency || frequency <= 0) {
       Alert.alert("Erro", "Defina um número de dias válido.");
@@ -29,14 +28,12 @@ const Admin = () => {
     Alert.alert("Sucesso", `Tarefas agora ocorrerão a cada ${frequency} dias.`);
   };
 
-  // Função para pausar ou retomar as tarefas
   const handleTogglePauseTasks = () => {
     setTasksPaused(!tasksPaused);
     const status = !tasksPaused ? "pausadas" : "retomadas";
     Alert.alert("Tarefas Atualizadas", `As tarefas foram ${status}.`);
   };
 
-  // Exibir tarefas (com pausa)
   const renderTasks = () => {
     if (tasksPaused) {
       return (

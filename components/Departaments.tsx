@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TextInput, Button, Alert } from "react-native";
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { TouchableOpacity } from "react-native-gesture-handler";
 
 const Departaments = () => {
-  const [selectedDepartment, setSelectedDepartment] = useState(""); // Estado para o departamento selecionado
-  const [message, setMessage] = useState(""); // Estado para a mensagem
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [message, setMessage] = useState("");
 
   const sendNotification = () => {
     if (!selectedDepartment) {
@@ -19,14 +19,13 @@ const Departaments = () => {
       "Notificação Enviada",
       `Departamento: ${selectedDepartment}\nMensagem: ${message}`
     );
-    // Lógica adicional para enviar a notificação
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Gerenciar Departamentos</Text>
       <Text style={styles.subtitle}>Selecione o departamento:</Text>
-      
+
       {/* Lista de Departamentos */}
       <View style={styles.departmentsContainer}>
         <TouchableOpacity
@@ -110,10 +109,9 @@ const Departaments = () => {
         placeholder="Digite as necessidades do setor"
         value={message}
         onChangeText={setMessage}
-        editable={!!selectedDepartment} // Bloqueia o input se nenhum departamento estiver selecionado
+        editable={!!selectedDepartment}
       />
 
-      {/* Botão de Enviar */}
       <Button title="Enviar Notificação" onPress={sendNotification} />
     </View>
   );

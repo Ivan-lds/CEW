@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { View, Image, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
+import {
+  View,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Alert,
+} from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -23,7 +30,6 @@ const SplashScreen = () => {
   );
 };
 
-// Configurando o React Navigation
 const Stack = createStackNavigator();
 
 export default function App() {
@@ -31,9 +37,9 @@ export default function App() {
 
   const handleLogout = async (navigation) => {
     try {
-      await AsyncStorage.clear(); // Limpa os dados salvos no AsyncStorage
+      await AsyncStorage.clear();
       Alert.alert("Logout", "Você saiu da sua conta com sucesso!");
-      navigation.navigate("Login"); // Navega para a tela de login
+      navigation.navigate("Login");
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
       Alert.alert("Erro", "Não foi possível fazer logout.");
@@ -43,7 +49,7 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 3000); // Exibe a Splash Screen por 3 segundos
+    }, 3000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -51,14 +57,12 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator>
         {isLoading ? (
-          // Mostra a SplashScreen como tela inicial durante o carregamento
           <Stack.Screen
             name="Splash"
             component={SplashScreen}
             options={{ headerShown: false }}
           />
         ) : (
-          // Define a tela "Login" como inicial após o carregamento
           <>
             <Stack.Screen
               name="Login"
@@ -116,8 +120,8 @@ export default function App() {
               name="Admin"
               component={Admin}
               options={({ navigation }) => ({
-                headerShown: true, 
-                title: "Configurações", 
+                headerShown: true,
+                title: "Configurações",
                 headerRight: () => (
                   <TouchableOpacity
                     style={styles.logoutButton}
@@ -151,7 +155,7 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 10, // Alinha à direita
+    marginRight: 10,
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 5,

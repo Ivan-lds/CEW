@@ -10,7 +10,6 @@ import {
 } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 
-// Definição do tipo para Entradas e Saídas
 interface BudgetItem {
   id: string;
   month: string;
@@ -59,7 +58,6 @@ const Budget = () => {
     ],
   };
 
-  // Estados para exibir os detalhes no modal
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedPanel, setSelectedPanel] = useState<string | null>(null);
   const [isModalVisible, setModalVisible] = useState(false);

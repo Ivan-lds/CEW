@@ -21,7 +21,7 @@ const Cadastro = ({ navigation }: { navigation: any }) => {
 
     // Enviar dados ao backend
     axios
-      .post("http://localhost:3001/register", {
+      .post("http://192.168.1.55:3001/register", {
         name,
         email,
         password,

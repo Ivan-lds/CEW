@@ -24,7 +24,6 @@ const Login = ({ navigation }: { navigation: any }) => {
     }
 
     try {
-      // Altere localhost para o IP da sua máquina se necessário
       const response = await axios.post("http://192.168.1.55:3001/login", {
         email,
         password,
@@ -37,11 +36,10 @@ const Login = ({ navigation }: { navigation: any }) => {
       if (response.data.success) {
         Alert.alert("Sucesso", "Login realizado com sucesso!");
         if (rememberMe) {
-          // Salvar token e email no AsyncStorage
           await AsyncStorage.setItem("userToken", response.data.token);
           await AsyncStorage.setItem("userEmail", email);
         }
-        navigation.navigate("Home"); // Navegar para a tela inicial
+        navigation.navigate("Home");
       } else {
         console.log(response.data.message);
         Alert.alert("Erro", response.data.message || "Credenciais inválidas.");

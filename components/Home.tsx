@@ -14,7 +14,6 @@ import { TouchableOpacity } from "react-native-gesture-handler";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Definição da interface Notification
 interface Notification {
   id: string;
   message: string;
@@ -22,17 +21,15 @@ interface Notification {
 
 const Home = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false); // Estado para verificar se é admin
-  const navigation = useNavigation(); // Navegação para o menu
+  const [isAdmin, setIsAdmin] = useState(false);
+  const navigation = useNavigation();
 
-  // Lista de notificações com a interface Notification
   const notifications: Notification[] = [
     { id: "1", message: "🔧 Manutenção: Solicitação de conserto enviada!" },
     { id: "2", message: "💰 Caixa: Novo relatório financeiro disponível." },
     { id: "3", message: "✍ Reunião agendada para 10/04/2025." },
   ];
 
-  // Verificar se o usuário é administrador
   useEffect(() => {
     const checkAdminStatus = async () => {
       const role = await AsyncStorage.getItem("role");
@@ -62,7 +59,7 @@ const Home = () => {
       {/* Painéis da Página Inicial */}
       <ScrollView
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false} // Esconde a barra de rolagem vertical
+        showsVerticalScrollIndicator={false}
       >
         {/* Painel de Tarefas */}
         <View style={styles.panel}>
