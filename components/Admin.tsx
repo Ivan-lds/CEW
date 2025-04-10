@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { ScrollView } from "react-native-gesture-handler";
-import React = require("react");
+import React from "react";
 
 const Admin = () => {
   const [taskFrequency, setTaskFrequency] = useState(0);
@@ -118,15 +118,27 @@ const Admin = () => {
 
   const handleRemoveUser = async () => {
     try {
-      await axios.post("http://localhost:3001/remove-user", {
+      console.log("Iniciando remoção do usuário:", selectedUser.name);
+      const response = await axios.post("http://localhost:3001/remove-user", {
         name: selectedUser.name,
       });
-      Alert.alert("Sucesso", `${selectedUser.name} foi removido.`);
-      setUsers(users.filter((user) => user.name !== selectedUser.name));
-      setIsModalVisible(false);
+      
+      if (response.data.success) {
+        console.log("Usuário removido com sucesso:", selectedUser.name);
+        Alert.alert("Sucesso", `${selectedUser.name} foi removido.`);
+        setUsers(users.filter((user) => user.name !== selectedUser.name));
+        setIsModalVisible(false);
+      } else {
+        console.error("Erro na resposta do servidor:", response.data);
+        Alert.alert("Erro", response.data.message || "Não foi possível remover o usuário.");
+      }
     } catch (error) {
       console.error("Erro ao remover usuário:", error);
-      Alert.alert("Erro", "Não foi possível remover o usuário.");
+      console.error("Detalhes do erro:", error.response?.data);
+      Alert.alert(
+        "Erro",
+        error.response?.data?.message || error.response?.data?.error || "Não foi possível remover o usuário."
+      );
     }
   };
 

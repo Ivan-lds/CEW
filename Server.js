@@ -181,10 +181,88 @@ app.get("/users", (req, res) => {
 /*Remover Usuário*/
 app.post("/remove-user", (req, res) => {
   const { name } = req.body;
-  const sql = "DELETE FROM users WHERE name = ?";
-  db.query(sql, [name], (err, result) => {
-    if (err) return res.status(500).send(err);
-    res.send({ message: "Usuário removido com sucesso!" });
+  
+  console.log("Tentando remover usuário:", name);
+  
+  if (!name) {
+    console.log("Nome do usuário não fornecido");
+    return res.status(400).send({ 
+      success: false, 
+      message: "Nome do usuário não fornecido" 
+    });
+  }
+
+  // Primeiro verifica se o usuário existe
+  const checkSql = "SELECT * FROM users WHERE name = ?";
+  db.query(checkSql, [name], (err, results) => {
+    if (err) {
+      console.error("Erro ao verificar usuário:", err);
+      return res.status(500).send({ 
+        success: false, 
+        message: "Erro ao verificar usuário",
+        error: err.message 
+      });
+    }
+
+    if (results.length === 0) {
+      console.log("Usuário não encontrado:", name);
+      return res.status(404).send({ 
+        success: false, 
+        message: "Usuário não encontrado" 
+      });
+    }
+
+    const userId = results[0].id;
+    console.log("ID do usuário encontrado:", userId);
+
+    // Primeiro deleta os registros relacionados na tabela tarefas
+    const deleteTarefasSql = "DELETE FROM tarefas WHERE responsavel_id = ?";
+    db.query(deleteTarefasSql, [userId], (err, result) => {
+      if (err) {
+        console.error("Erro ao remover tarefas relacionadas:", err);
+        return res.status(500).send({ 
+          success: false, 
+          message: "Erro ao remover tarefas relacionadas",
+          error: err.message 
+        });
+      }
+
+      console.log("Tarefas relacionadas removidas com sucesso");
+
+      // Depois deleta os registros relacionados na tabela roupas
+      const deleteRoupasSql = "DELETE FROM roupas WHERE usuario_id = ?";
+      db.query(deleteRoupasSql, [userId], (err, result) => {
+        if (err) {
+          console.error("Erro ao remover registros de roupas:", err);
+          return res.status(500).send({ 
+            success: false, 
+            message: "Erro ao remover registros de roupas",
+            error: err.message 
+          });
+        }
+
+        console.log("Registros de roupas removidos com sucesso");
+
+        // Por fim, deleta o usuário
+        const deleteUserSql = "DELETE FROM users WHERE id = ?";
+        db.query(deleteUserSql, [userId], (err, result) => {
+          if (err) {
+            console.error("Erro ao remover usuário:", err);
+            return res.status(500).send({ 
+              success: false, 
+              message: "Erro ao remover usuário",
+              error: err.message 
+            });
+          }
+
+          console.log("Usuário removido com sucesso:", name);
+          res.send({ 
+            success: true, 
+            message: "Usuário removido com sucesso!" 
+          });
+        });
+      });
+    });
   });
 });
 
