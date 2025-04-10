@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { ScrollView } from "react-native-gesture-handler";
+import React = require("react");
 
 const Admin = () => {
   const [taskFrequency, setTaskFrequency] = useState(0);
@@ -70,7 +71,7 @@ const Admin = () => {
     try {
       await axios.post("http://localhost:3001/transfer-admin", {
         newAdminId: selectedUser.name,
-        role: role
+        role: role,
       });
       Alert.alert("Sucesso", `${selectedUser.name} agora é ${role}.`);
       setIsModalVisible(false);
@@ -82,7 +83,7 @@ const Admin = () => {
 
   const convertDateToDatabaseFormat = (date) => {
     // Converte dd-mm-yyyy para yyyy-mm-dd
-    const [day, month, year] = date.split('-');
+    const [day, month, year] = date.split("-");
     return `${year}-${month}-${day}`;
   };
 
@@ -131,23 +132,23 @@ const Admin = () => {
 
   const formatDate = (text) => {
     // Remove todos os caracteres não numéricos
-    const numbers = text.replace(/\D/g, '');
-    
+    const numbers = text.replace(/\D/g, "");
+
     // Limita a 8 dígitos (ddmmyyyy)
     const limited = numbers.slice(0, 8);
-    
+
     // Formata como dd-mm-yyyy
-    let formatted = '';
+    let formatted = "";
     if (limited.length > 0) {
       formatted += limited.slice(0, 2);
       if (limited.length > 2) {
-        formatted += '-' + limited.slice(2, 4);
+        formatted += "-" + limited.slice(2, 4);
         if (limited.length > 4) {
-          formatted += '-' + limited.slice(4, 8);
+          formatted += "-" + limited.slice(4, 8);
         }
       }
     }
-    
+
     return formatted;
   };
 
@@ -191,7 +192,7 @@ const Admin = () => {
         {/* Seção: Documentos */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📁 Documentos</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.button, styles.documentButton]}
             onPress={() => alert("Gerenciar Documentos")}
           >
@@ -232,7 +233,7 @@ const Admin = () => {
               <Text style={styles.modalTitle}>
                 Opções para {selectedUser.name}
               </Text>
-              
+
               <View style={styles.inputRow}>
                 <TextInput
                   style={[styles.input, styles.flexInput]}
@@ -242,7 +243,7 @@ const Admin = () => {
                   keyboardType="numeric"
                   maxLength={10}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.smallButton}
                   onPress={() => handleSetBirthday(birthdayInput)}
                 >
@@ -257,7 +258,7 @@ const Admin = () => {
                   value={departmentInput}
                   onChangeText={setDepartmentInput}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.smallButton}
                   onPress={() => handleSetDepartment(departmentInput)}
                 >
@@ -266,28 +267,30 @@ const Admin = () => {
               </View>
 
               <View style={styles.roleButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.roleButton, styles.adminButton]}
                   onPress={() => handleSetAdmin("admin")}
                 >
                   <Text style={styles.roleButtonText}>Definir como Admin</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.roleButton, styles.userButton]}
                   onPress={() => handleSetAdmin("user")}
                 >
-                  <Text style={styles.roleButtonText}>Definir como Usuário</Text>
+                  <Text style={styles.roleButtonText}>
+                    Definir como Usuário
+                  </Text>
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.button, styles.removeButton]}
                 onPress={handleRemoveUser}
               >
                 <Text style={styles.buttonText}>Remover Usuário</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.button, styles.closeButton]}
                 onPress={() => {
                   setIsModalVisible(false);
@@ -341,12 +344,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
   buttonTextPerfil: {
-    color: 'blue',
-    fontWeight: 'bold',
+    color: "blue",
+    fontWeight: "bold",
   },
   themeSwitcher: {
     flexDirection: "row",
@@ -380,20 +383,20 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 40,
-    borderColor: 'gray',
+    borderColor: "gray",
     borderWidth: 1,
     marginBottom: 10,
     paddingHorizontal: 10,
     borderRadius: 5,
   },
   roleButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
     gap: 10,
   },
@@ -401,44 +404,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   smallButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     padding: 10,
     borderRadius: 5,
     width: 80,
-    alignItems: 'center',
+    alignItems: "center",
   },
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   removeButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: "#dc3545",
   },
   closeButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
   },
   roleButton: {
     flex: 1,
     padding: 10,
     borderRadius: 5,
     marginHorizontal: 5,
-    alignItems: 'center',
+    alignItems: "center",
   },
   adminButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
   },
   userButton: {
-    backgroundColor: '#6c757d',
+    backgroundColor: "#6c757d",
   },
   roleButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
+    color: "white",
+    fontWeight: "bold",
   },
   documentButton: {
-    backgroundColor: '#007bff',
+    backgroundColor: "#007bff",
   },
 });
 

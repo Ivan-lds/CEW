@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { View, Text, StyleSheet, Button, Switch, Alert } from "react-native";
 
