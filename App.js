@@ -127,7 +127,15 @@ export default function App() {
               component={Admin}
               options={({ navigation }) => ({
                 headerShown: true,
-                title: "Configurações",
+                title: "Administração",
+                headerLeft: () => (
+                  <TouchableOpacity
+                    style={styles.backButton}
+                    onPress={() => navigation.navigate("Home")}
+                  >
+                    <FontAwesome name="arrow-left" size={24} color="#333" />
+                  </TouchableOpacity>
+                ),
                 headerRight: () => (
                   <TouchableOpacity
                     style={styles.logoutButton}
@@ -178,5 +186,9 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     color: "#333",
     fontWeight: "bold",
+  },
+  backButton: {
+    marginLeft: 10,
+    padding: 5,
   },
 });

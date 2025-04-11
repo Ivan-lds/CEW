@@ -2,10 +2,29 @@ const express = require("express");
 const mysql = require("mysql");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors());
+
+// Configuração do multer para upload de arquivos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
 
 const db = mysql.createConnection({
   host: "localhost",
@@ -60,9 +79,15 @@ app.post("/login", (req, res) => {
     console.log("Usuário encontrado no banco:", user);
 
     if (user.password === password) {
+      console.log("Login bem-sucedido para o usuário:", user);
       return res.status(200).send({
         success: true,
         role: user.role,
+        user: {
+          name: user.name,
+          email: user.email,
+          departamento: user.departamento || ''
+        },
         message: "Login realizado com sucesso!",
       });
     } else {
@@ -309,6 +334,77 @@ app.post("/redefinir-senha", (req, res) => {
     });
   });
 });
+
+/* Upload de Foto de Perfil */
+app.post("/upload-profile-picture", upload.single('profile_picture'), (req, res) => {
+  const { name } = req.body;
+  const profilePicture = req.file;
+
+  if (!profilePicture) {
+    return res.status(400).send({ 
+      success: false, 
+      message: "Nenhuma imagem foi enviada" 
+    });
+  }
+
+  // Salvar apenas o nome do arquivo no banco de dados
+  const imagePath = profilePicture.filename;
+  const sql = "UPDATE users SET profile_picture = ? WHERE name = ?";
+  
+  db.query(sql, [imagePath, name], (err, result) => {
+    if (err) {
+      console.error("Erro ao atualizar foto de perfil:", err);
+      return res.status(500).send({ 
+        success: false, 
+        message: "Erro ao atualizar foto de perfil" 
+      });
+    }
+
+    res.send({ 
+      success: true, 
+      message: "Foto de perfil atualizada com sucesso!",
+      imagePath: imagePath
+    });
+  });
+});
+
+/* Buscar dados do usuário logado */
+app.get("/user-data", (req, res) => {
+  const { email } = req.query;
+  
+  if (!email) {
+    return res.status(400).send({ 
+      success: false, 
+      message: "Email é obrigatório" 
+    });
+  }
+
+  const sql = "SELECT * FROM users WHERE email = ?";
+  db.query(sql, [email], (err, results) => {
+    if (err) {
+      console.error("Erro ao buscar dados do usuário:", err);
+      return res.status(500).send({ 
+        success: false, 
+        message: "Erro ao buscar dados do usuário" 
+      });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).send({ 
+        success: false, 
+        message: "Usuário não encontrado" 
+      });
+    }
+
+    res.send({ 
+      success: true, 
+      user: results[0] 
+    });
+  });
+});
+
+// Adicionar rota para servir as imagens
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.listen(3001, () => {
   console.log("Servidor rodando na porta 3001");

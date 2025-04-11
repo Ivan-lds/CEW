@@ -10,20 +10,30 @@ import {
   TouchableOpacity,
   Switch,
   Modal,
+  Image,
 } from "react-native";
 import axios from "axios";
 import { ScrollView } from "react-native-gesture-handler";
 import React from "react";
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Admin = () => {
+const Admin = ({ navigation }: { navigation: any }) => {
   const [taskFrequency, setTaskFrequency] = useState(0);
   const [tasksPaused, setTasksPaused] = useState(false);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [birthdayInput, setBirthdayInput] = useState("");
   const [departmentInput, setDepartmentInput] = useState("");
+  const [userData, setUserData] = useState({
+    name: "",
+    email: "",
+    departamento: ""
+  });
+  const [profileImage, setProfileImage] = useState(null);
 
   // Função para buscar usuários do banco de dados
   const fetchUsers = async () => {
@@ -33,6 +43,25 @@ const Admin = () => {
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
       Alert.alert("Erro", "Não foi possível carregar os usuários.");
+    }
+  };
+
+  const fetchUserData = async () => {
+    try {
+      const response = await axios.get("http://localhost:3001/user-data", {
+        params: {
+          email: userData.email
+        }
+      });
+      
+      if (response.data.success) {
+        setUserData(response.data.user);
+        if (response.data.user.profile_picture) {
+          setProfileImage(response.data.user.profile_picture);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar dados do usuário:", error);
     }
   };
 
@@ -170,8 +199,79 @@ const Admin = () => {
   };
 
   useEffect(() => {
+    const loadUserData = async () => {
+      const email = await AsyncStorage.getItem('userEmail');
+      const name = await AsyncStorage.getItem('userName');
+      const department = await AsyncStorage.getItem('userDepartment');
+      
+      if (email && name) {
+        setUserData({
+          email,
+          name,
+          departamento: department || ''
+        });
+      }
+    };
+    loadUserData();
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (userData.email) {
+      fetchUserData();
+    }
+  }, [userData.email]);
+
+  useEffect(() => {
+    // Solicitar permissão para acessar a galeria
+    (async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar sua galeria de fotos.');
+      }
+    })();
+  }, []);
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+
+      if (!result.canceled) {
+        const selectedImage = result.assets[0];
+        setProfileImage(selectedImage.uri);
+        
+        // Criar um objeto FormData para enviar a imagem
+        const formData = new FormData();
+        formData.append('profile_picture', {
+          uri: selectedImage.uri,
+          type: 'image/jpeg',
+          name: 'profile.jpg'
+        } as any);
+        formData.append('name', userData.name);
+
+        // Enviar a imagem para o servidor
+        const response = await axios.post('http://localhost:3001/upload-profile-picture', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.data.success) {
+          Alert.alert('Sucesso', 'Foto de perfil atualizada com sucesso!');
+        } else {
+          Alert.alert('Erro', 'Não foi possível atualizar a foto de perfil.');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao selecionar imagem:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao selecionar a imagem.');
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -180,10 +280,73 @@ const Admin = () => {
         {/* Seção: Dados Pessoais */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Dados Pessoais</Text>
-          <TouchableOpacity onPress={() => alert("Editar Perfil")}>
-            <Text style={styles.buttonTextPerfil}>Editar Perfil</Text>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={() => setIsProfileModalVisible(true)}
+          >
+            <Text style={styles.buttonText}>Editar Perfil</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Modal de Dados Pessoais */}
+        <Modal
+          visible={isProfileModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsProfileModalVisible(false)}
+        >
+          <View style={styles.profileModalContainer}>
+            <View style={styles.profileModalContent}>
+              <Text style={styles.modalTitle}>Dados Pessoais</Text>
+              
+              {/* Foto de Perfil */}
+              <View style={styles.profileImageContainer}>
+                <Image
+                  source={profileImage ? { uri: profileImage } : require('../assets/img/default-profile.png')}
+                  style={styles.profileImage}
+                />
+                <TouchableOpacity 
+                  style={styles.changePhotoButton}
+                  onPress={pickImage}
+                >
+                  <Text style={styles.changePhotoText}>Alterar Foto</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Informações do Usuário */}
+              <View style={styles.infoContainer}>
+                <Text style={styles.label}>Nome:</Text>
+                <Text style={styles.value}>{userData.name}</Text>
+                
+                <Text style={styles.label}>Email:</Text>
+                <Text style={styles.value}>{userData.email}</Text>
+                
+                <Text style={styles.label}>Departamento:</Text>
+                <Text style={styles.value}>{userData.departamento}</Text>
+              </View>
+
+              {/* Botões de Ação */}
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.changePasswordButton]}
+                  onPress={() => {
+                    setIsProfileModalVisible(false);
+                    navigation.navigate("RedefinirSenha");
+                  }}
+                >
+                  <Text style={styles.buttonText}>Alterar Senha</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.closeButton]}
+                  onPress={() => setIsProfileModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         {/* Seção: Temas */}
         <View style={styles.section}>
@@ -433,7 +596,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#dc3545",
   },
   closeButton: {
-    backgroundColor: "#007bff",
+    backgroundColor: "#6c757d",
   },
   roleButton: {
     flex: 1,
@@ -453,6 +616,67 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   documentButton: {
+    backgroundColor: "#007bff",
+  },
+  // Estilos do modal de dados pessoais
+  profileModalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  profileModalContent: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    width: "90%",
+    maxHeight: "80%",
+  },
+  profileImageContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
+  changePhotoButton: {
+    backgroundColor: "#007bff",
+    padding: 8,
+    borderRadius: 5,
+  },
+  changePhotoText: {
+    color: "#fff",
+    fontSize: 12,
+  },
+  infoContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#555",
+    marginTop: 10,
+  },
+  value: {
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 5,
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  actionButton: {
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: "center",
+  },
+  changePasswordButton: {
     backgroundColor: "#007bff",
   },
 });

@@ -25,36 +25,39 @@ const Login = ({ navigation }: { navigation: any }) => {
     }
 
     try {
-      const response = await axios.post("http://192.168.1.55:3001/login", {
+      const response = await axios.post("http://localhost:3001/login", {
         email,
         password,
       });
 
-      console.log("Resposta completa da API:", response.data);
-      await AsyncStorage.setItem("role", response.data.role);
-      console.log("Role salvo no AsyncStorage:", response.data.role);
+      console.log("Resposta completa do servidor:", response.data);
 
       if (response.data.success) {
-        Alert.alert("Sucesso", "Login realizado com sucesso!");
-        if (rememberMe) {
-          await AsyncStorage.setItem("userToken", response.data.token);
-          await AsyncStorage.setItem("userEmail", email);
-        }
+        // Armazenar informações do usuário logado
+        await AsyncStorage.setItem('userEmail', email);
+        await AsyncStorage.setItem('userName', response.data.user.name);
+        await AsyncStorage.setItem('userDepartment', response.data.user.departamento || '');
+        await AsyncStorage.setItem('role', response.data.role);
+        
+        console.log("Informações do usuário armazenadas:");
+        console.log("Email:", email);
+        console.log("Nome:", response.data.user.name);
+        console.log("Departamento:", response.data.user.departamento);
+        console.log("Role:", response.data.role);
+        
+        console.log("Navegando para:", response.data.role === "admin" ? "Home" : "Home");
+        
+        // Sempre navega para Home primeiro
         navigation.navigate("Home");
       } else {
-        console.log(response.data.message);
-        Alert.alert("Erro", response.data.message || "Credenciais inválidas.");
+        Alert.alert("Erro", response.data.message);
       }
     } catch (error) {
-      console.error(error);
-      if (error.response) {
-        Alert.alert(
-          "Erro",
-          error.response.data.message || "Credenciais inválidas."
-        );
-      } else {
-        Alert.alert("Erro", "Não foi possível conectar ao servidor.");
-      }
+      console.error("Erro ao fazer login:", error);
+      Alert.alert(
+        "Erro",
+        error.response?.data?.message || "Erro ao fazer login. Tente novamente."
+      );
     }
   };
 
