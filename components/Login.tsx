@@ -89,12 +89,20 @@ const Login = ({ navigation }: { navigation: any }) => {
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
       </View>
+      <View style={styles.linkContainer}>
+      <Text
+        style={styles.linkText}
+        onPress={() => navigation.navigate("RedefinirSenha")}
+      >
+        Esqueceu sua senha? 
+      </Text>
       <Text
         style={styles.linkText}
         onPress={() => navigation.navigate("Cadastro")}
       >
-        Não tem uma conta? Cadastre-se aqui.
+        Não tem uma conta?
       </Text>
+      </View>
     </View>
   );
 };
@@ -106,6 +114,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#f8f9fa",
     padding: 20,
+  },
+  linkContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
   },
   header: {
     fontSize: 30,

@@ -20,6 +20,7 @@ import Configs from "./components/Configs";
 import Login from "./components/Login";
 import Cadastro from "./components/Cadastro";
 import Admin from "./components/Admin";
+import RedefinirSenha from "./components/RedefinirSenha";
 
 // Componente SplashScreen
 const SplashScreen = () => {
@@ -73,6 +74,11 @@ export default function App() {
               name="Cadastro"
               component={Cadastro}
               options={{ title: "Cadastro de Usuário" }}
+            />
+            <Stack.Screen
+              name="RedefinirSenha"
+              component={RedefinirSenha}
+              options={{ title: "Redefinir Senha" }}
             />
             <Stack.Screen
               name="Home"

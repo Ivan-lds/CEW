@@ -255,6 +255,14 @@ app.post("/remove-user", (req, res) => {
             });
           }
 
+          /*Redefinir Senha*/ 
+          const redefinirSenha = "UPDATE users SET password = '123456' WHERE id = ?";
+          db.query(redefinirSenha, [userId], (err, result) => {
+            if (err) {
+              console.error("Erro ao redefinir senha:", err);
+            }
+          });
+
           console.log("Usuário removido com sucesso:", name);
           res.send({ 
             success: true, 
@@ -262,6 +270,42 @@ app.post("/remove-user", (req, res) => {
           });
         });
       });
+    });
+  });
+});
+
+/*Redefinir Senha*/
+app.post("/redefinir-senha", (req, res) => {
+  const { email, newPassword } = req.body;
+  
+  if (!email || !newPassword) {
+    return res.status(400).send({ 
+      success: false, 
+      message: "Email e nova senha são obrigatórios" 
+    });
+  }
+
+  const sql = "UPDATE users SET password = ? WHERE email = ?";
+  db.query(sql, [newPassword, email], (err, result) => {
+    if (err) {
+      console.error("Erro ao redefinir senha:", err);
+      return res.status(500).send({ 
+        success: false, 
+        message: "Erro ao redefinir senha",
+        error: err.message 
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({ 
+        success: false, 
+        message: "Email não encontrado" 
+      });
+    }
+
+    res.send({ 
+      success: true, 
+      message: "Senha redefinida com sucesso!" 
     });
   });
 });
