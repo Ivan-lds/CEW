@@ -10,12 +10,10 @@ import {
   TouchableOpacity,
   Switch,
   Modal,
-  Image,
 } from "react-native";
 import axios from "axios";
 import { ScrollView } from "react-native-gesture-handler";
 import React from "react";
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Admin = ({ navigation }: { navigation: any }) => {
@@ -33,12 +31,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
     email: "",
     departamento: ""
   });
-  const [profileImage, setProfileImage] = useState(null);
 
   // Função para buscar usuários do banco de dados
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/users"); // Ajuste o endpoint conforme necessário
+      const response = await axios.get("http://192.168.1.55:3001/users"); // Ajuste o endpoint conforme necessário
       setUsers(response.data);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
@@ -48,7 +45,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const fetchUserData = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/user-data", {
+      const response = await axios.get("http://192.168.1.55:3001/user-data", {
         params: {
           email: userData.email
         }
@@ -56,9 +53,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
       
       if (response.data.success) {
         setUserData(response.data.user);
-        if (response.data.user.profile_picture) {
-          setProfileImage(response.data.user.profile_picture);
-        }
       }
     } catch (error) {
       console.error("Erro ao buscar dados do usuário:", error);
@@ -98,7 +92,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetAdmin = async (role) => {
     try {
-      await axios.post("http://localhost:3001/transfer-admin", {
+      await axios.post("http://192.168.1.55:3001/transfer-admin", {
         newAdminId: selectedUser.name,
         role: role,
       });
@@ -119,7 +113,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const handleSetBirthday = async (date) => {
     try {
       const formattedDate = convertDateToDatabaseFormat(date);
-      await axios.post("http://localhost:3001/aniversarios", {
+      await axios.post("http://192.168.1.55:3001/aniversarios", {
         name: selectedUser.name,
         date: formattedDate,
       });
@@ -133,7 +127,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetDepartment = async (department) => {
     try {
-      await axios.post("http://localhost:3001/departamentos", {
+      await axios.post("http://192.168.1.55:3001/departamentos", {
         name: selectedUser.name,
         departamento: department,
       });
@@ -148,7 +142,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const handleRemoveUser = async () => {
     try {
       console.log("Iniciando remoção do usuário:", selectedUser.name);
-      const response = await axios.post("http://localhost:3001/remove-user", {
+      const response = await axios.post("http://192.168.1.55:3001/remove-user", {
         name: selectedUser.name,
       });
       
@@ -222,56 +216,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   }, [userData.email]);
 
-  useEffect(() => {
-    // Solicitar permissão para acessar a galeria
-    (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar sua galeria de fotos.');
-      }
-    })();
-  }, []);
-
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        const selectedImage = result.assets[0];
-        setProfileImage(selectedImage.uri);
-        
-        // Criar um objeto FormData para enviar a imagem
-        const formData = new FormData();
-        formData.append('profile_picture', {
-          uri: selectedImage.uri,
-          type: 'image/jpeg',
-          name: 'profile.jpg'
-        } as any);
-        formData.append('name', userData.name);
-
-        // Enviar a imagem para o servidor
-        const response = await axios.post('http://localhost:3001/upload-profile-picture', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        if (response.data.success) {
-          Alert.alert('Sucesso', 'Foto de perfil atualizada com sucesso!');
-        } else {
-          Alert.alert('Erro', 'Não foi possível atualizar a foto de perfil.');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao selecionar imagem:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao selecionar a imagem.');
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -298,20 +242,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
           <View style={styles.profileModalContainer}>
             <View style={styles.profileModalContent}>
               <Text style={styles.modalTitle}>Dados Pessoais</Text>
-              
-              {/* Foto de Perfil */}
-              <View style={styles.profileImageContainer}>
-                <Image
-                  source={profileImage ? { uri: profileImage } : require('../assets/img/default-profile.png')}
-                  style={styles.profileImage}
-                />
-                <TouchableOpacity 
-                  style={styles.changePhotoButton}
-                  onPress={pickImage}
-                >
-                  <Text style={styles.changePhotoText}>Alterar Foto</Text>
-                </TouchableOpacity>
-              </View>
 
               {/* Informações do Usuário */}
               <View style={styles.infoContainer}>

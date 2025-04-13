@@ -1,8 +1,7 @@
 import React from "react";
 import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Button, Switch, Alert, Modal, TextInput, TouchableOpacity, Image } from "react-native";
+import { View, Text, StyleSheet, Button, Switch, Alert, Modal, TextInput, TouchableOpacity} from "react-native";
 import axios from "axios";
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Configs = ({ navigation }: { navigation: any }) => {
@@ -13,19 +12,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
     email: "",
     departamento: ""
   });
-  const [profileImage, setProfileImage] = useState(null);
-
-  useEffect(() => {
-    // Buscar dados do usuário ao carregar o componente
-    fetchUserData();
-    // Solicitar permissão para acessar a galeria
-    (async () => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar sua galeria de fotos.');
-      }
-    })();
-  }, []);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -52,7 +38,7 @@ const Configs = ({ navigation }: { navigation: any }) => {
 
   const fetchUserData = async () => {
     try {
-      const response = await axios.get("http://localhost:3001/user-data", {
+      const response = await axios.get("http://192.168.1.55:3001/user-data", {
         params: {
           email: userData.email
         }
@@ -60,10 +46,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
       
       if (response.data.success) {
         setUserData(response.data.user);
-        if (response.data.user.profile_picture) {
-          // Construir a URL completa da imagem
-          setProfileImage(`http://localhost:3001/uploads/${response.data.user.profile_picture}`);
-        }
       }
     } catch (error) {
       console.error("Erro ao buscar dados do usuário:", error);
@@ -76,47 +58,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
       "Tema Alterado",
       isDarkTheme ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
     );
-  };
-
-  const pickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        const selectedImage = result.assets[0];
-        setProfileImage(selectedImage.uri);
-        
-        // Criar um objeto FormData para enviar a imagem
-        const formData = new FormData();
-        formData.append('profile_picture', {
-          uri: selectedImage.uri,
-          type: 'image/jpeg',
-          name: 'profile.jpg'
-        } as any);
-        formData.append('name', userData.name);
-
-        // Enviar a imagem para o servidor
-        const response = await axios.post('http://localhost:3001/upload-profile-picture', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        if (response.data.success) {
-          Alert.alert('Sucesso', 'Foto de perfil atualizada com sucesso!');
-        } else {
-          Alert.alert('Erro', 'Não foi possível atualizar a foto de perfil.');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao selecionar imagem:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao selecionar a imagem.');
-    }
   };
 
   return (
@@ -144,20 +85,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Dados Pessoais</Text>
-            
-            {/* Foto de Perfil */}
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={profileImage ? { uri: profileImage } : require('../assets/img/default-profile.png')}
-                style={styles.profileImage}
-              />
-              <TouchableOpacity 
-                style={styles.changePhotoButton}
-                onPress={pickImage}
-              >
-                <Text style={styles.changePhotoText}>Alterar Foto</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Informações do Usuário */}
             <View style={styles.infoContainer}>

@@ -335,39 +335,6 @@ app.post("/redefinir-senha", (req, res) => {
   });
 });
 
-/* Upload de Foto de Perfil */
-app.post("/upload-profile-picture", upload.single('profile_picture'), (req, res) => {
-  const { name } = req.body;
-  const profilePicture = req.file;
-
-  if (!profilePicture) {
-    return res.status(400).send({ 
-      success: false, 
-      message: "Nenhuma imagem foi enviada" 
-    });
-  }
-
-  // Salvar apenas o nome do arquivo no banco de dados
-  const imagePath = profilePicture.filename;
-  const sql = "UPDATE users SET profile_picture = ? WHERE name = ?";
-  
-  db.query(sql, [imagePath, name], (err, result) => {
-    if (err) {
-      console.error("Erro ao atualizar foto de perfil:", err);
-      return res.status(500).send({ 
-        success: false, 
-        message: "Erro ao atualizar foto de perfil" 
-      });
-    }
-
-    res.send({ 
-      success: true, 
-      message: "Foto de perfil atualizada com sucesso!",
-      imagePath: imagePath
-    });
-  });
-});
-
 /* Buscar dados do usuário logado */
 app.get("/user-data", (req, res) => {
   const { email } = req.query;
@@ -403,8 +370,6 @@ app.get("/user-data", (req, res) => {
   });
 });
 
-// Adicionar rota para servir as imagens
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.listen(3001, () => {
   console.log("Servidor rodando na porta 3001");
