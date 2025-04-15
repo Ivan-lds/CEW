@@ -15,10 +15,24 @@ import axios from "axios";
 import { ScrollView } from "react-native-gesture-handler";
 import React from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FontAwesome } from '@expo/vector-icons';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+
+interface Tarefa {
+  id: number;
+  nome: string;
+  intervalo_dias: number;
+  esta_pausada: boolean;
+  status: string;
+  data_prevista: string;
+  ultimo_responsavel: string | null;
+  ultima_execucao: string | null;
+  responsavel_nome: string | null;
+  proxima_execucao: string | null;
+}
 
 const Admin = ({ navigation }: { navigation: any }) => {
   const [taskFrequency, setTaskFrequency] = useState(0);
-  const [tasksPaused, setTasksPaused] = useState(false);
   const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -31,6 +45,28 @@ const Admin = ({ navigation }: { navigation: any }) => {
     email: "",
     departamento: ""
   });
+  const [isGerenciarTarefasVisible, setIsGerenciarTarefasVisible] = useState(false);
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(null);
+  const [intervaloTemp, setIntervaloTemp] = useState("");
+  const [editarIntervaloVisible, setEditarIntervaloVisible] = useState(false);
+  const [novaTarefaVisible, setNovaTarefaVisible] = useState(false);
+  const [novaTarefaNome, setNovaTarefaNome] = useState("");
+  const [novaTarefaIntervalo, setNovaTarefaIntervalo] = useState("");
+  const [isGerenciarPessoasVisible, setIsGerenciarPessoasVisible] = useState(false);
+  const [pessoas, setPessoas] = useState<any[]>([]);
+  const [pessoaSelecionada, setPessoaSelecionada] = useState<any>(null);
+  const [diasViagem, setDiasViagem] = useState("");
+  const [dataRetorno, setDataRetorno] = useState("");
+  const [isRetornoModalVisible, setIsRetornoModalVisible] = useState(false);
+  const [viagemAtual, setViagemAtual] = useState<any>(null);
+  const [pessoasOrdenadas, setPessoasOrdenadas] = useState<any[]>([]);
+  const [isOrdenacaoAtiva, setIsOrdenacaoAtiva] = useState(false);
+
+  // Carregar pessoas quando o componente montar
+  useEffect(() => {
+    buscarPessoas();
+  }, []);
 
   // Função para buscar usuários do banco de dados
   const fetchUsers = async () => {
@@ -69,19 +105,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
     Alert.alert("Sucesso", `Tarefas agora ocorrerão a cada ${frequency} dias.`);
   };
 
-  const handleTogglePauseTasks = () => {
-    setTasksPaused(!tasksPaused);
-    const status = !tasksPaused ? "pausadas" : "retomadas";
-    Alert.alert("Tarefas Atualizadas", `As tarefas foram ${status}.`);
-  };
-
   // Funções de tema
   const toggleTheme = () => {
     setIsDarkTheme((prev) => !prev);
     Alert.alert(
       "Tema Alterado",
       isDarkTheme ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
-    );
+    );  
   };
 
   // Funções para interagir com usuários
@@ -192,6 +222,175 @@ const Admin = ({ navigation }: { navigation: any }) => {
     setBirthdayInput(formatted);
   };
 
+  // Buscar tarefas
+  const buscarTarefas = async () => {
+    try {
+      const response = await axios.get("http://192.168.1.55:3001/tarefas/agendamento");
+      if (response.data.success) {
+        setTarefas(response.data.tarefas);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar tarefas:", error);
+      Alert.alert("Erro", "Não foi possível carregar as tarefas.");
+    }
+  };
+
+  // Criar nova tarefa
+  const criarTarefa = async () => {
+    if (!novaTarefaNome || !novaTarefaIntervalo) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos.");
+      return;
+    }
+
+    const intervalo = parseInt(novaTarefaIntervalo);
+    if (isNaN(intervalo) || intervalo < 1) {
+      Alert.alert("Erro", "O intervalo deve ser um número maior que zero.");
+      return;
+    }
+
+    try {
+      const response = await axios.post("http://192.168.1.55:3001/tarefas", {
+        nome: novaTarefaNome,
+        intervalo_dias: intervalo
+      });
+
+      if (response.data.success) {
+        Alert.alert("Sucesso", "Tarefa criada com sucesso!");
+        setNovaTarefaNome("");
+        setNovaTarefaIntervalo("");
+        setNovaTarefaVisible(false);
+        buscarTarefas();
+      }
+    } catch (error) {
+      console.error("Erro ao criar tarefa:", error);
+      Alert.alert("Erro", "Não foi possível criar a tarefa.");
+    }
+  };
+
+  // Atualizar intervalo de dias
+  const atualizarIntervalo = async () => {
+    if (!tarefaSelecionada) return;
+
+    const intervalo = parseInt(intervaloTemp);
+    if (isNaN(intervalo) || intervalo < 1) {
+      Alert.alert("Erro", "Por favor, insira um número válido maior que zero.");
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `http://192.168.1.55:3001/tarefas/${tarefaSelecionada.id}/intervalo`,
+        { intervalo_dias: intervalo }
+      );
+
+      if (response.data.success) {
+        Alert.alert("Sucesso", "Intervalo atualizado com sucesso!");
+        setEditarIntervaloVisible(false);
+        buscarTarefas();
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar intervalo:", error);
+      Alert.alert("Erro", "Não foi possível atualizar o intervalo.");
+    }
+  };
+
+  // Alternar status de pausa da tarefa
+  const alternarPausa = async (tarefa: Tarefa) => {
+    try {
+      const response = await axios.put(
+        `http://192.168.1.55:3001/tarefas/${tarefa.id}/pausar`,
+        { esta_pausada: !tarefa.esta_pausada }
+      );
+
+      if (response.data.success) {
+        buscarTarefas();
+      }
+    } catch (error) {
+      console.error("Erro ao alternar pausa:", error);
+      Alert.alert("Erro", "Não foi possível alterar o status da tarefa.");
+    }
+  };
+
+  // Função para buscar pessoas
+  const buscarPessoas = async () => {
+    try {
+      const response = await axios.get("http://192.168.1.55:3001/pessoas/ordem");
+      if (response.data.success) {
+        setPessoas(response.data.pessoas);
+        setPessoasOrdenadas(response.data.pessoas);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar pessoas:", error);
+      Alert.alert("Erro", "Não foi possível carregar a lista de pessoas.");
+    }
+  };
+
+  const handleReordenar = async ({ data }) => {
+    setPessoasOrdenadas(data);
+    try {
+      await axios.post("http://192.168.1.55:3001/pessoas/reordenar", {
+        ordem: data.map(pessoa => pessoa.id)
+      });
+      Alert.alert("Sucesso", "Nova ordem salva com sucesso!");
+    } catch (error) {
+      console.error("Erro ao reordenar pessoas:", error);
+      Alert.alert("Erro", "Não foi possível salvar a nova ordem.");
+    }
+  };
+
+  // Função para iniciar viagem
+  const iniciarViagem = async (usuarioId: number) => {
+    try {
+      const response = await axios.post("http://192.168.1.55:3001/viagens/iniciar", {
+        usuario_id: usuarioId,
+        data_saida: new Date().toISOString().split('T')[0]
+      });
+
+      if (response.data.success) {
+        Alert.alert("Sucesso", "Viagem iniciada com sucesso!");
+        setViagemAtual(response.data.viagem_id);
+        buscarPessoas();
+      }
+    } catch (error) {
+      console.error("Erro ao iniciar viagem:", error);
+      Alert.alert("Erro", "Não foi possível iniciar a viagem.");
+    }
+  };
+
+  const formatDateForDisplay = (date: string) => {
+    // Converte yyyy-mm-dd para dd-mm-yyyy
+    if (!date) return '';
+    const [year, month, day] = date.split('-');
+    return `${day}-${month}-${year}`;
+  };
+
+  // Função para registrar retorno
+  const registrarRetorno = async () => {
+    if (!pessoaSelecionada || !dataRetorno) {
+      Alert.alert("Erro", "Por favor, preencha a data de retorno.");
+      return;
+    }
+    
+    // Converte dd-mm-yyyy para yyyy-mm-dd antes de enviar
+    const formattedDate = convertDateToDatabaseFormat(dataRetorno);
+
+    try {
+      const response = await axios.post(`http://192.168.1.55:3001/viagens/${pessoaSelecionada.viagem_atual_id}/retorno`, {
+        data_retorno: formattedDate
+      });
+
+      if (response.data.success) {
+        Alert.alert("Sucesso", `Retorno registrado com sucesso! Dias fora: ${response.data.dias_fora}`);
+        setIsRetornoModalVisible(false);
+        setDataRetorno("");
+        buscarPessoas();
+      }
+    } catch (error) {
+      console.error("Erro ao registrar retorno:", error);
+      Alert.alert("Erro", "Não foi possível registrar o retorno.");
+    }
+  };
+
   useEffect(() => {
     const loadUserData = async () => {
       const email = await AsyncStorage.getItem('userEmail');
@@ -216,6 +415,19 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   }, [userData.email]);
 
+  // Carregar tarefas quando abrir o modal
+  useEffect(() => {
+    if (isGerenciarTarefasVisible) {
+      buscarTarefas();
+    }
+  }, [isGerenciarTarefasVisible]);
+
+  // Carregar pessoas quando abrir o modal
+  useEffect(() => {
+    if (isGerenciarPessoasVisible) {
+      buscarPessoas();
+    }
+  }, [isGerenciarPessoasVisible]);
 
   return (
     <View style={styles.container}>
@@ -305,13 +517,26 @@ const Admin = ({ navigation }: { navigation: any }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Botão para pausar tarefas */}
+        {/* Seção: Gerenciar Tarefas */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pausar/Retomar Tarefas</Text>
-          <Button
-            title={tasksPaused ? "Retomar Tarefas" : "Pausar Tarefas"}
-            onPress={handleTogglePauseTasks}
-          />
+          <Text style={styles.sectionTitle}>📋 Gerenciar Tarefas</Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setIsGerenciarTarefasVisible(true)}
+          >
+            <Text style={styles.buttonText}>Gerenciar Tarefas</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Seção: Gerenciar Pessoas */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👥 Gerenciar Pessoas</Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setIsGerenciarPessoasVisible(true)}
+          >
+            <Text style={styles.buttonText}>Gerenciar Pessoas</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Lista de usuários */}
@@ -335,79 +560,393 @@ const Admin = ({ navigation }: { navigation: any }) => {
         {selectedUser && (
           <Modal visible={isModalVisible} animationType="slide">
             <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>
-                Opções para {selectedUser.name}
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                  Opções para {selectedUser.name}
+                </Text>
+
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={[styles.input, styles.flexInput]}
+                    placeholder="Data de Aniversário (DD-MM-YYYY)"
+                    value={birthdayInput}
+                    onChangeText={handleDateChange}
+                    keyboardType="numeric"
+                    maxLength={10}
+                  />
+                  <TouchableOpacity
+                    style={styles.smallButton}
+                    onPress={() => handleSetBirthday(birthdayInput)}
+                  >
+                    <Text style={styles.buttonText}>Enviar</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <TextInput
+                    style={[styles.input, styles.flexInput]}
+                    placeholder="Departamento"
+                    value={departmentInput}
+                    onChangeText={setDepartmentInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.smallButton}
+                    onPress={() => handleSetDepartment(departmentInput)}
+                  >
+                    <Text style={styles.buttonText}>Enviar</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.roleButtons}>
+                  <TouchableOpacity
+                    style={[styles.roleButton, styles.adminButton]}
+                    onPress={() => handleSetAdmin("admin")}
+                  >
+                    <Text style={styles.roleButtonText}>Definir como Admin</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.roleButton, styles.userButton]}
+                    onPress={() => handleSetAdmin("user")}
+                  >
+                    <Text style={styles.roleButtonText}>
+                      Definir como Usuário
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.button, styles.removeButton]}
+                  onPress={handleRemoveUser}
+                >
+                  <Text style={styles.buttonText}>Remover Usuário</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.button, styles.closeButton]}
+                  onPress={() => {
+                    setIsModalVisible(false);
+                    setBirthdayInput("");
+                    setDepartmentInput("");
+                  }}
+                >
+                  <Text style={styles.buttonText}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
+
+        {/* Seção: Lista de Pessoas */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>👥 Lista de Pessoas</Text>
+          
+          <View style={styles.listHeader}>
+            <Text style={styles.listTitle}>Pessoas Cadastradas</Text>
+            <TouchableOpacity
+              style={[styles.smallButton, isOrdenacaoAtiva && styles.activeButton]}
+              onPress={() => setIsOrdenacaoAtiva(!isOrdenacaoAtiva)}
+            >
+              <Text style={styles.buttonText}>
+                {isOrdenacaoAtiva ? "Salvar Ordem" : "Reordenar"}
               </Text>
+            </TouchableOpacity>
+          </View>
 
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.flexInput]}
-                  placeholder="Data de Aniversário (DD-MM-YYYY)"
-                  value={birthdayInput}
-                  onChangeText={handleDateChange}
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-                <TouchableOpacity
-                  style={styles.smallButton}
-                  onPress={() => handleSetBirthday(birthdayInput)}
-                >
-                  <Text style={styles.buttonText}>Enviar</Text>
-                </TouchableOpacity>
-              </View>
+          {isOrdenacaoAtiva ? (
+            <DraggableFlatList
+              data={pessoasOrdenadas}
+              onDragEnd={handleReordenar}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item, drag, isActive }) => (
+                <ScaleDecorator>
+                  <TouchableOpacity
+                    style={[styles.pessoaItem, isActive && styles.dragging]}
+                    onLongPress={drag}
+                  >
+                    <View style={styles.pessoaInfo}>
+                      <Text style={styles.pessoaNome}>{item.name}</Text>
+                      {item.departamento && (
+                        <Text style={styles.pessoaDepartamento}>
+                          {item.departamento}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </ScaleDecorator>
+              )}
+            />
+          ) : (
+            <FlatList
+              data={pessoas}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.pessoaItem}>
+                  <View style={styles.pessoaInfo}>
+                    <Text style={styles.pessoaNome}>{item.name}</Text>
+                    {item.departamento && (
+                      <Text style={styles.pessoaDepartamento}>
+                        {item.departamento}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              )}
+            />
+          )}
+        </View>
 
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.flexInput]}
-                  placeholder="Departamento"
-                  value={departmentInput}
-                  onChangeText={setDepartmentInput}
-                />
-                <TouchableOpacity
-                  style={styles.smallButton}
-                  onPress={() => handleSetDepartment(departmentInput)}
-                >
-                  <Text style={styles.buttonText}>Enviar</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.roleButtons}>
-                <TouchableOpacity
-                  style={[styles.roleButton, styles.adminButton]}
-                  onPress={() => handleSetAdmin("admin")}
-                >
-                  <Text style={styles.roleButtonText}>Definir como Admin</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.roleButton, styles.userButton]}
-                  onPress={() => handleSetAdmin("user")}
-                >
-                  <Text style={styles.roleButtonText}>
-                    Definir como Usuário
-                  </Text>
-                </TouchableOpacity>
-              </View>
+        {/* Modal de Gerenciamento de Tarefas */}
+        <Modal
+          visible={isGerenciarTarefasVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsGerenciarTarefasVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}>
+              <Text style={styles.modalTitle}>Gerenciamento de Tarefas</Text>
 
               <TouchableOpacity
-                style={[styles.button, styles.removeButton]}
-                onPress={handleRemoveUser}
+                style={[styles.button, { marginBottom: 15 }]}
+                onPress={() => setNovaTarefaVisible(true)}
               >
-                <Text style={styles.buttonText}>Remover Usuário</Text>
+                <Text style={styles.buttonText}>Nova Tarefa</Text>
               </TouchableOpacity>
 
+              <ScrollView>
+                {tarefas.map((tarefa) => (
+                  <View key={tarefa.id} style={styles.tarefaItem}>
+                    <View style={styles.tarefaHeader}>
+                      <Text style={styles.tarefaNome}>{tarefa.nome}</Text>
+                      <Switch
+                        value={!tarefa.esta_pausada}
+                        onValueChange={() => alternarPausa(tarefa)}
+                        trackColor={{ false: "#767577", true: "#81b0ff" }}
+                        thumbColor={tarefa.esta_pausada ? "#f4f3f4" : "#f8f9fa"}
+                      />
+                    </View>
+
+                    <View style={styles.tarefaInfo}>
+                      <Text style={styles.tarefaIntervalo}>
+                        Intervalo: {tarefa.intervalo_dias} dia(s)
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setTarefaSelecionada(tarefa);
+                          setIntervaloTemp(tarefa.intervalo_dias.toString());
+                          setEditarIntervaloVisible(true);
+                        }}
+                      >
+                        <FontAwesome name="edit" size={20} color="#007bff" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={[styles.tarefaStatus, { color: tarefa.esta_pausada ? "#6c757d" : "#28a745" }]}>
+                      Status: {tarefa.esta_pausada ? "Pausada" : "Ativa"}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+
               <TouchableOpacity
-                style={[styles.button, styles.closeButton]}
-                onPress={() => {
-                  setIsModalVisible(false);
-                  setBirthdayInput("");
-                  setDepartmentInput("");
-                }}
+                style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+                onPress={() => setIsGerenciarTarefasVisible(false)}
               >
                 <Text style={styles.buttonText}>Fechar</Text>
               </TouchableOpacity>
             </View>
-          </Modal>
-        )}
+          </View>
+        </Modal>
+
+        {/* Modal de Nova Tarefa */}
+        <Modal
+          visible={novaTarefaVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setNovaTarefaVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Nova Tarefa</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Nome da tarefa"
+                value={novaTarefaNome}
+                onChangeText={setNovaTarefaNome}
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Intervalo em dias"
+                value={novaTarefaIntervalo}
+                onChangeText={setNovaTarefaIntervalo}
+                keyboardType="numeric"
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={criarTarefa}
+                >
+                  <Text style={styles.buttonText}>Criar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setNovaTarefaVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Editar Intervalo */}
+        <Modal
+          visible={editarIntervaloVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setEditarIntervaloVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                Editar Intervalo - {tarefaSelecionada?.nome}
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                value={intervaloTemp}
+                onChangeText={setIntervaloTemp}
+                keyboardType="numeric"
+                placeholder="Novo intervalo em dias"
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={atualizarIntervalo}
+                >
+                  <Text style={styles.buttonText}>Salvar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setEditarIntervaloVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Gerenciamento de Pessoas */}
+        <Modal
+          visible={isGerenciarPessoasVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsGerenciarPessoasVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}>
+              <Text style={styles.modalTitle}>Gerenciamento de Pessoas</Text>
+
+              <ScrollView>
+                {pessoas.map((pessoa) => (
+                  <View key={pessoa.id} style={styles.pessoaItem}>
+                    <View style={styles.pessoaInfo}>
+                      <Text style={styles.pessoaNome}>{pessoa.name}</Text>
+                      {pessoa.departamento && (
+                        <Text style={styles.pessoaDepartamento}>{pessoa.departamento}</Text>
+                      )}
+                    </View>
+
+                    <View style={styles.pessoaAcoes}>
+                      {!pessoa.em_viagem ? (
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.viajarButton]}
+                          onPress={() => iniciarViagem(pessoa.id)}
+                        >
+                          <Text style={styles.buttonText}>Iniciar Viagem</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.retornarButton]}
+                          onPress={() => {
+                            setPessoaSelecionada(pessoa);
+                            setIsRetornoModalVisible(true);
+                          }}
+                        >
+                          <Text style={styles.buttonText}>Registrar Retorno</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+                onPress={() => setIsGerenciarPessoasVisible(false)}
+              >
+                <Text style={styles.buttonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Registro de Retorno */}
+        <Modal
+          visible={isRetornoModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setIsRetornoModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                Registrar Retorno - {pessoaSelecionada?.name}
+              </Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Data de Retorno (DD-MM-YYYY)"
+                value={dataRetorno}
+                onChangeText={(text) => {
+                  // Aplica máscara de formatação
+                  const formatted = text
+                    .replace(/\D/g, '') // Remove não-dígitos
+                    .replace(/^(\d{2})(\d)/, '$1-$2') // Coloca hífen após dia
+                    .replace(/^(\d{2})\-(\d{2})(\d)/, '$1-$2-$3') // Coloca hífen após mês
+                    .substring(0, 10); // Limita a 10 caracteres
+                  setDataRetorno(formatted);
+                }}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={registrarRetorno}
+                >
+                  <Text style={styles.buttonText}>Registrar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setIsRetornoModalVisible(false);
+                    setDataRetorno("");
+                  }}
+                >
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
@@ -478,7 +1017,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 20,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalTitle: {
     fontSize: 20,
@@ -608,6 +1147,119 @@ const styles = StyleSheet.create({
   },
   changePasswordButton: {
     backgroundColor: "#007bff",
+  },
+  tarefaItem: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tarefaHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  tarefaNome: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  tarefaInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  tarefaIntervalo: {
+    fontSize: 14,
+    color: "#666",
+  },
+  tarefaStatus: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    width: "100%",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 15,
+  },
+  modalButton: {
+    padding: 10,
+    borderRadius: 5,
+    flex: 1,
+    marginHorizontal: 5,
+    alignItems: "center",
+  },
+  saveButton: {
+    backgroundColor: "#007bff",
+  },
+  cancelButton: {
+    backgroundColor: "#6c757d",
+  },
+  pessoaItem: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  pessoaInfo: {
+    marginBottom: 10,
+  },
+  pessoaNome: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  pessoaDepartamento: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 4,
+  },
+  pessoaAcoes: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  viajarButton: {
+    backgroundColor: "#28a745",
+  },
+  retornarButton: {
+    backgroundColor: "#007bff",
+  },
+  listHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  listTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  activeButton: {
+    backgroundColor: "#28a745",
+  },
+  dragging: {
+    opacity: 0.5,
+    transform: [{ scale: 1.1 }],
+    backgroundColor: "#f8f9fa",
   },
 });
 

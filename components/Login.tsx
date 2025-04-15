@@ -38,12 +38,14 @@ const Login = ({ navigation }: { navigation: any }) => {
         await AsyncStorage.setItem('userName', response.data.user.name);
         await AsyncStorage.setItem('userDepartment', response.data.user.departamento || '');
         await AsyncStorage.setItem('role', response.data.role);
+        await AsyncStorage.setItem('userId', response.data.user.id.toString());
         
         console.log("Informações do usuário armazenadas:");
         console.log("Email:", email);
         console.log("Nome:", response.data.user.name);
         console.log("Departamento:", response.data.user.departamento);
         console.log("Role:", response.data.role);
+        console.log("UserId:", response.data.user.id);
         
         console.log("Navegando para:", response.data.role === "admin" ? "Home" : "Home");
         
