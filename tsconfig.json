@@ -3,5 +3,5 @@
     "esModuleInterop": true,
     "jsx": "react"
   },
-  "extends": "expo/tsconfig.base"
+  "extends": "expo/tsconfig.base",
 }
