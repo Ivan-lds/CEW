@@ -16,7 +16,7 @@ import { ScrollView } from "react-native-gesture-handler";
 import React from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+
 
 interface Tarefa {
   id: number;
@@ -67,6 +67,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
   useEffect(() => {
     buscarPessoas();
   }, []);
+
+  // Sincronizar estados de pessoas
+  useEffect(() => {
+    setPessoasOrdenadas(pessoas);
+  }, [pessoas]);
 
   // Função para buscar usuários do banco de dados
   const fetchUsers = async () => {
@@ -325,13 +330,28 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  const handleReordenar = async ({ data }) => {
-    setPessoasOrdenadas(data);
+  const moverPessoa = async (id: number, direcao: 'cima' | 'baixo') => {
+    const index = pessoasOrdenadas.findIndex(p => p.id === id);
+    if (index === -1) return;
+
+    const novaLista = [...pessoasOrdenadas];
+    if (direcao === 'cima' && index > 0) {
+      // Troca com o item anterior
+      [novaLista[index], novaLista[index - 1]] = [novaLista[index - 1], novaLista[index]];
+    } else if (direcao === 'baixo' && index < novaLista.length - 1) {
+      // Troca com o próximo item
+      [novaLista[index], novaLista[index + 1]] = [novaLista[index + 1], novaLista[index]];
+    } else {
+      return; // Não pode mover mais
+    }
+
+    setPessoasOrdenadas(novaLista);
+    setPessoas(novaLista); // Atualiza também o estado pessoas
+
     try {
       await axios.post("http://192.168.1.55:3001/pessoas/reordenar", {
-        ordem: data.map(pessoa => pessoa.id)
+        ordem: novaLista.map(pessoa => pessoa.id)
       });
-      Alert.alert("Sucesso", "Nova ordem salva com sucesso!");
     } catch (error) {
       console.error("Erro ao reordenar pessoas:", error);
       Alert.alert("Erro", "Não foi possível salvar a nova ordem.");
@@ -652,34 +672,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
             </TouchableOpacity>
           </View>
 
-          {isOrdenacaoAtiva ? (
-            <DraggableFlatList
-              data={pessoasOrdenadas}
-              onDragEnd={handleReordenar}
+          <FlatList
+              data={isOrdenacaoAtiva ? pessoasOrdenadas : pessoas}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item, drag, isActive }) => (
-                <ScaleDecorator>
-                  <TouchableOpacity
-                    style={[styles.pessoaItem, isActive && styles.dragging]}
-                    onLongPress={drag}
-                  >
-                    <View style={styles.pessoaInfo}>
-                      <Text style={styles.pessoaNome}>{item.name}</Text>
-                      {item.departamento && (
-                        <Text style={styles.pessoaDepartamento}>
-                          {item.departamento}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                </ScaleDecorator>
-              )}
-            />
-          ) : (
-            <FlatList
-              data={pessoas}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <View style={styles.pessoaItem}>
                   <View style={styles.pessoaInfo}>
                     <Text style={styles.pessoaNome}>{item.name}</Text>
@@ -689,10 +685,27 @@ const Admin = ({ navigation }: { navigation: any }) => {
                       </Text>
                     )}
                   </View>
+                  {isOrdenacaoAtiva && (
+                    <View style={styles.setasContainer}>
+                      <TouchableOpacity
+                        style={[styles.setaButton, index === 0 && styles.setaDisabled]}
+                        onPress={() => moverPessoa(item.id, 'cima')}
+                        disabled={index === 0}
+                      >
+                        <FontAwesome name="arrow-up" size={20} color={index === 0 ? "#ccc" : "#007bff"} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.setaButton, index === pessoasOrdenadas.length - 1 && styles.setaDisabled]}
+                        onPress={() => moverPessoa(item.id, 'baixo')}
+                        disabled={index === pessoasOrdenadas.length - 1}
+                      >
+                        <FontAwesome name="arrow-down" size={20} color={index === pessoasOrdenadas.length - 1 ? "#ccc" : "#007bff"} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
             />
-          )}
         </View>
 
         {/* Modal de Gerenciamento de Tarefas */}
@@ -1261,6 +1274,19 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
     backgroundColor: "#f8f9fa",
   },
+  setasContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  setaButton: {
+    padding: 8,
+    marginHorizontal: 4,
+  },
+  setaDisabled: {
+    opacity: 0.5,
+  },
+
 });
 
 export default Admin;
