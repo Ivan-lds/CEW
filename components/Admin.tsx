@@ -16,13 +16,14 @@ import { ScrollView } from "react-native-gesture-handler";
 import React from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
-
+import { Picker } from '@react-native-picker/picker';
 
 interface Tarefa {
   id: number;
   nome: string;
   intervalo_dias: number;
   esta_pausada: boolean;
+  tem_feriado_hoje: boolean;
   status: string;
   data_prevista: string;
   ultimo_responsavel: string | null;
@@ -46,6 +47,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
     departamento: ""
   });
   const [isGerenciarTarefasVisible, setIsGerenciarTarefasVisible] = useState(false);
+  const [feriados, setFeriados] = useState([]);
+  const [novoFeriado, setNovoFeriado] = useState({ data: "", tarefa_id: null });
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(null);
   const [intervaloTemp, setIntervaloTemp] = useState("");
@@ -66,6 +69,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Carregar pessoas quando o componente montar
   useEffect(() => {
     buscarPessoas();
+    buscarFeriados();
   }, []);
 
   // Sincronizar estados de pessoas
@@ -228,6 +232,67 @@ const Admin = ({ navigation }: { navigation: any }) => {
   };
 
   // Buscar tarefas
+  const buscarFeriados = async () => {
+    try {
+      const response = await axios.get('http://192.168.1.55:3001/feriados');
+      if (response.data.success) {
+        setFeriados(response.data.feriados);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar feriados:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os feriados.');
+    }
+  };
+
+  const adicionarFeriadoHoje = async (tarefaId: number) => {
+    const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    try {
+      const response = await axios.post('http://192.168.1.55:3001/feriados', {
+        data: hoje,
+        tarefa_id: tarefaId
+      });
+      if (response.data.success) {
+        Alert.alert('Sucesso', 'Feriado registrado para hoje com sucesso!');
+        buscarFeriados();
+      }
+    } catch (error) {
+      console.error('Erro ao cadastrar feriado:', error);
+      Alert.alert('Erro', 'Não foi possível registrar o feriado.');
+    }
+  };
+
+  const adicionarFeriado = async () => {
+    if (!novoFeriado.data || !novoFeriado.tarefa_id) {
+      Alert.alert('Erro', 'Por favor, selecione uma data e uma tarefa.');
+      return;
+    }
+
+    try {
+      const response = await axios.post('http://192.168.1.55:3001/feriados', novoFeriado);
+      if (response.data.success) {
+        Alert.alert('Sucesso', 'Feriado cadastrado com sucesso!');
+        setNovoFeriado({ data: "", tarefa_id: null });
+        buscarFeriados();
+      }
+    } catch (error) {
+      console.error('Erro ao cadastrar feriado:', error);
+      Alert.alert('Erro', 'Não foi possível cadastrar o feriado.');
+    }
+  };
+
+  const removerFeriado = async (id) => {
+    try {
+      const response = await axios.delete(`http://192.168.1.55:3001/feriados/${id}`);
+      if (response.data.success) {
+        Alert.alert('Sucesso', 'Feriado removido com sucesso!');
+        buscarFeriados();
+      }
+    } catch (error) {
+      console.error('Erro ao remover feriado:', error);
+      Alert.alert('Erro', 'Não foi possível remover o feriado.');
+    }
+  };
+
   const buscarTarefas = async () => {
     try {
       const response = await axios.get("http://192.168.1.55:3001/tarefas/agendamento");
@@ -299,6 +364,20 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
+  // Deletar tarefa
+  const deletarTarefa = async (tarefaId: number) => {
+    try {
+      const response = await axios.delete(`http://192.168.1.55:3001/tarefas/${tarefaId}`);
+      if (response.data.success) {
+        Alert.alert("Sucesso", "Tarefa excluída com sucesso!");
+        buscarTarefas();
+      }
+    } catch (error) {
+      console.error("Erro ao excluir tarefa:", error);
+      Alert.alert("Erro", "Não foi possível excluir a tarefa.");
+    }
+  };
+
   // Alternar status de pausa da tarefa
   const alternarPausa = async (tarefa: Tarefa) => {
     try {
@@ -306,12 +385,15 @@ const Admin = ({ navigation }: { navigation: any }) => {
         `http://192.168.1.55:3001/tarefas/${tarefa.id}/pausar`,
         { esta_pausada: !tarefa.esta_pausada }
       );
-
       if (response.data.success) {
+        Alert.alert(
+          "Sucesso",
+          `Tarefa ${tarefa.esta_pausada ? "reativada" : "pausada"} com sucesso!`
+        );
         buscarTarefas();
       }
     } catch (error) {
-      console.error("Erro ao alternar pausa:", error);
+      console.error("Erro ao alternar pausa da tarefa:", error);
       Alert.alert("Erro", "Não foi possível alterar o status da tarefa.");
     }
   };
@@ -743,20 +825,39 @@ const Admin = ({ navigation }: { navigation: any }) => {
                       <Text style={styles.tarefaIntervalo}>
                         Intervalo: {tarefa.intervalo_dias} dia(s)
                       </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setTarefaSelecionada(tarefa);
-                          setIntervaloTemp(tarefa.intervalo_dias.toString());
-                          setEditarIntervaloVisible(true);
-                        }}
-                      >
-                        <FontAwesome name="edit" size={20} color="#007bff" />
-                      </TouchableOpacity>
+                      <View style={styles.tarefaAcoes}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setTarefaSelecionada(tarefa);
+                            setIntervaloTemp(tarefa.intervalo_dias.toString());
+                            setEditarIntervaloVisible(true);
+                          }}
+                          style={styles.acaoButton}
+                        >
+                          <FontAwesome name="edit" size={20} color="#007bff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => deletarTarefa(tarefa.id)}
+                          style={styles.acaoButton}
+                        >
+                          <FontAwesome name="trash" size={20} color="#dc3545" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     <Text style={[styles.tarefaStatus, { color: tarefa.esta_pausada ? "#6c757d" : "#28a745" }]}>
                       Status: {tarefa.esta_pausada ? "Pausada" : "Ativa"}
                     </Text>
+
+                    <TouchableOpacity
+                      style={[styles.button, styles.feriadoButton, tarefa.tem_feriado_hoje && styles.feriadoAtivo]}
+                      onPress={() => adicionarFeriadoHoje(tarefa.id)}
+                    >
+                      <View style={styles.feriadoContent}>
+                        <FontAwesome name="calendar" size={16} color={tarefa.tem_feriado_hoje ? "#fff" : "#000"} />
+                        <Text style={[styles.buttonText, tarefa.tem_feriado_hoje && styles.feriadoAtivoText]}>Feriado</Text>
+                      </View>
+                    </TouchableOpacity>
                   </View>
                 ))}
               </ScrollView>
@@ -966,6 +1067,55 @@ const Admin = ({ navigation }: { navigation: any }) => {
 };
 
 const styles = StyleSheet.create({
+  feriadosSection: {
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  feriadoForm: {
+    marginBottom: 15,
+  },
+  pickerContainer: {
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+  },
+  picker: {
+    height: 50,
+  },
+  feriadosList: {
+    maxHeight: 200,
+  },
+  feriadoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  feriadoText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  removeButtonIcon: {
+    padding: 5,
+  },
+  addButton: {
+    backgroundColor: '#28a745',
+    marginTop: 10,
+  },
   container: {
     flex: 1,
     padding: 20,
@@ -993,12 +1143,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#555",
-    marginBottom: 10,
   },
   buttonText: {
     color: "white",
@@ -1285,6 +1429,28 @@ const styles = StyleSheet.create({
   },
   setaDisabled: {
     opacity: 0.5,
+  },
+  feriadoButton: {
+    backgroundColor: "#ffc107",
+    marginTop: 10,
+  },
+  tarefaAcoes: {
+    flexDirection: "row",
+    gap: 15,
+  },
+  acaoButton: {
+    padding: 5,
+  },
+  feriadoContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  feriadoAtivo: {
+    backgroundColor: "#28a745",
+  },
+  feriadoAtivoText: {
+    color: "#fff",
   },
 
 });

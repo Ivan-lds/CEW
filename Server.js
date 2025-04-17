@@ -398,7 +398,16 @@ app.post("/tarefas", (req, res) => {
 
 // Listar todas as tarefas
 app.get("/tarefas", (req, res) => {
-  const sql = "SELECT * FROM tarefas ORDER BY nome";
+  const sql = `
+    SELECT t.*, 
+    EXISTS(
+      SELECT 1 FROM feriados f 
+      WHERE f.tarefa_id = t.id 
+      AND f.data = CURDATE()
+    ) as tem_feriado_hoje 
+    FROM tarefas t 
+    ORDER BY t.nome
+  `;
   
   db.query(sql, (err, results) => {
     if (err) {
@@ -1557,6 +1566,145 @@ app.post("/pessoas/reordenar", (req, res) => {
         error: err.message
       });
     });
+});
+
+/* Rotas para gerenciamento de feriados */
+app.post('/feriados', (req, res) => {
+  const { data, tarefa_id } = req.body;
+  
+  const sql = 'INSERT INTO feriados (data, tarefa_id) VALUES (?, ?)';
+  db.query(sql, [data, tarefa_id], (err, result) => {
+    if (err) {
+      console.error('Erro ao cadastrar feriado:', err);
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao cadastrar feriado',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      message: 'Feriado cadastrado com sucesso!'
+    });
+  });
+});
+
+app.get('/feriados', (req, res) => {
+  const sql = 'SELECT f.*, t.nome as tarefa_nome FROM feriados f LEFT JOIN tarefas t ON f.tarefa_id = t.id ORDER BY f.data';
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Erro ao buscar feriados:', err);
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao buscar feriados',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      feriados: results
+    });
+  });
+});
+
+app.delete('/feriados/:id', (req, res) => {
+  const { id } = req.params;
+  
+  const sql = 'DELETE FROM feriados WHERE id = ?';
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error('Erro ao remover feriado:', err);
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao remover feriado',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      message: 'Feriado removido com sucesso!'
+    });
+  });
+});
+
+/* Rota para verificar acúmulo de lixo */
+app.post('/tarefas/lixo/status', (req, res) => {
+  const { tarefa_id } = req.body;
+  
+  // Verifica se é domingo ou feriado
+  const hoje = new Date();
+  const sql = `
+    SELECT COUNT(*) as count 
+    FROM feriados 
+    WHERE data = CURDATE() 
+    AND tarefa_id = ?
+  `;
+  
+  db.query(sql, [tarefa_id], (err, results) => {
+    if (err) {
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao verificar status do lixo',
+        error: err.message
+      });
+      return;
+    }
+    
+    const ehFeriado = results[0].count > 0;
+    const ehDomingo = hoje.getDay() === 0;
+    
+    if (ehFeriado || ehDomingo) {
+      res.send({
+        success: true,
+        deve_pular: true,
+        motivo: ehDomingo ? 'domingo' : 'feriado'
+      });
+    } else {
+      res.send({
+        success: true,
+        deve_pular: false
+      });
+    }
+  });
+});
+
+/* Rota para notificar responsável sobre ajuda */
+app.post('/tarefas/lixo/notificar', (req, res) => {
+  const { usuario_id, motivo } = req.body;
+  
+  // Aqui você implementaria a lógica de notificação
+  // Por exemplo, salvando em uma tabela de notificações
+  const sql = `
+    INSERT INTO notificacoes (usuario_id, mensagem, data_criacao)
+    VALUES (?, ?, NOW())
+  `;
+  
+  const mensagem = motivo === 'domingo' ?
+    'Você quer que outra pessoa te ajude na segunda?' :
+    'Quer que outra pessoa tire com você amanhã?';
+  
+  db.query(sql, [usuario_id, mensagem], (err, result) => {
+    if (err) {
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao criar notificação',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      message: 'Notificação criada com sucesso!',
+      notificacao_id: result.insertId
+    });
+  });
 });
 
 app.listen(3001, () => {
