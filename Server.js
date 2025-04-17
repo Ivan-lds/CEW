@@ -496,32 +496,80 @@ app.put("/tarefas/:id/pausar", (req, res) => {
   });
 });
 
-// Excluir tarefa
+// Rota para deletar tarefa
 app.delete("/tarefas/:id", (req, res) => {
   const { id } = req.params;
-  
-  const sql = "DELETE FROM tarefas WHERE id = ?";
-  
-  db.query(sql, [id], (err, result) => {
+
+  // Usar transação para garantir que todas as operações sejam executadas
+  db.beginTransaction((err) => {
     if (err) {
-      console.error("Erro ao excluir tarefa:", err);
+      console.error("Erro ao iniciar transação:", err);
       return res.status(500).send({
         success: false,
-        message: "Erro ao excluir tarefa",
+        message: "Erro ao iniciar transação",
         error: err.message
       });
     }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).send({
-        success: false,
-        message: "Tarefa não encontrada"
+
+    // Primeiro, deletar as execuções
+    db.query("DELETE FROM execucoes_tarefas WHERE tarefa_id = ?", [id], (err) => {
+      if (err) {
+        return db.rollback(() => {
+          console.error("Erro ao deletar execuções:", err);
+          res.status(500).send({
+            success: false,
+            message: "Erro ao deletar execuções",
+            error: err.message
+          });
+        });
+      }
+
+      // Depois, deletar os feriados
+      db.query("DELETE FROM feriados WHERE tarefa_id = ?", [id], (err) => {
+        if (err) {
+          return db.rollback(() => {
+            console.error("Erro ao deletar feriados:", err);
+            res.status(500).send({
+              success: false,
+              message: "Erro ao deletar feriados",
+              error: err.message
+            });
+          });
+        }
+
+        // Por fim, deletar a tarefa
+        db.query("DELETE FROM tarefas WHERE id = ?", [id], (err, result) => {
+          if (err) {
+            return db.rollback(() => {
+              console.error("Erro ao deletar tarefa:", err);
+              res.status(500).send({
+                success: false,
+                message: "Erro ao deletar tarefa",
+                error: err.message
+              });
+            });
+          }
+
+          // Commit da transação
+          db.commit((err) => {
+            if (err) {
+              return db.rollback(() => {
+                console.error("Erro ao finalizar transação:", err);
+                res.status(500).send({
+                  success: false,
+                  message: "Erro ao finalizar transação",
+                  error: err.message
+                });
+              });
+            }
+
+            res.status(200).send({
+              success: true,
+              message: "Tarefa excluída com sucesso!"
+            });
+          });
+        });
       });
-    }
-    
-    res.send({
-      success: true,
-      message: "Tarefa excluída com sucesso!"
     });
   });
 });
@@ -695,45 +743,38 @@ function atualizarResponsavel(tarefaId, responsavelId, resolve, reject) {
   });
 }
 
-// Modificar a rota de agendamento para incluir informações do responsável
+// Buscar tarefas com agendamento
 app.get("/tarefas/agendamento", (req, res) => {
   const sql = `
     SELECT 
       t.*,
       u.name as responsavel_nome,
-      CASE 
-        WHEN t.esta_pausada = 1 THEN 'pausada'
-        WHEN t.ultima_execucao IS NULL THEN 'pendente'
+      e.data_execucao as ultima_execucao,
+      e.usuario_id as ultimo_responsavel_id,
+      u2.name as ultimo_responsavel,
+      EXISTS(
+        SELECT 1 
+        FROM feriados f 
+        WHERE f.tarefa_id = t.id 
+        AND f.data = CURDATE()
+      ) as tem_feriado_hoje,
+      CASE
+        WHEN t.esta_pausada THEN 'pausada'
         WHEN CURDATE() >= COALESCE(t.proxima_execucao, CURDATE()) THEN 'pendente'
         ELSE 'em_dia'
-      END as status,
-      COALESCE(t.proxima_execucao, CURDATE()) as data_prevista,
-      (
-        SELECT u2.name 
-        FROM users u2 
-        WHERE u2.id = (
-          SELECT e.usuario_id 
-          FROM execucoes_tarefas e 
-          WHERE e.tarefa_id = t.id 
-          ORDER BY e.data_execucao DESC 
-          LIMIT 1
-        )
-      ) as ultimo_responsavel,
-      (
-        SELECT MAX(e.data_execucao)
-        FROM execucoes_tarefas e
-        WHERE e.tarefa_id = t.id
-      ) as ultima_execucao
+      END as status
     FROM tarefas t
     LEFT JOIN users u ON t.responsavel_id = u.id
-    ORDER BY 
-      CASE 
-        WHEN t.esta_pausada = 1 THEN 2
-        WHEN t.ultima_execucao IS NULL THEN 0
-        WHEN CURDATE() >= t.proxima_execucao THEN 0
-        ELSE 1
-      END,
-      t.nome`;
+    LEFT JOIN (
+      SELECT tarefa_id, MAX(data_execucao) as max_data
+      FROM execucoes_tarefas
+      GROUP BY tarefa_id
+    ) ultima_exec ON t.id = ultima_exec.tarefa_id
+    LEFT JOIN execucoes_tarefas e ON e.tarefa_id = t.id 
+      AND e.data_execucao = ultima_exec.max_data
+    LEFT JOIN users u2 ON e.usuario_id = u2.id
+    ORDER BY t.nome;
+  `;
 
   db.query(sql, (err, results) => {
     if (err) {
@@ -749,6 +790,7 @@ app.get("/tarefas/agendamento", (req, res) => {
     const tarefas = results.map(tarefa => ({
       ...tarefa,
       esta_pausada: !!tarefa.esta_pausada,
+      tem_feriado_hoje: !!tarefa.tem_feriado_hoje,
       data_prevista: tarefa.data_prevista ? new Date(tarefa.data_prevista).toISOString().split('T')[0] : null,
       ultima_execucao: tarefa.ultima_execucao ? new Date(tarefa.ultima_execucao).toISOString().split('T')[0] : null,
       proxima_execucao: tarefa.proxima_execucao ? new Date(tarefa.proxima_execucao).toISOString().split('T')[0] : null
@@ -1633,6 +1675,29 @@ app.delete('/feriados/:id', (req, res) => {
   });
 });
 
+// Remover feriado específico de uma tarefa em uma data específica
+app.delete('/feriados/:tarefa_id/:data', (req, res) => {
+  const { tarefa_id, data } = req.params;
+  
+  const sql = 'DELETE FROM feriados WHERE tarefa_id = ? AND data = ?';
+  db.query(sql, [tarefa_id, data], (err, result) => {
+    if (err) {
+      console.error('Erro ao remover feriado:', err);
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao remover feriado',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      message: 'Feriado removido com sucesso!'
+    });
+  });
+});
+
 /* Rota para verificar acúmulo de lixo */
 app.post('/tarefas/lixo/status', (req, res) => {
   const { tarefa_id } = req.body;
@@ -1703,6 +1768,52 @@ app.post('/tarefas/lixo/notificar', (req, res) => {
       success: true,
       message: 'Notificação criada com sucesso!',
       notificacao_id: result.insertId
+    });
+  });
+});
+
+// Remover feriados de uma tarefa específica
+app.delete('/feriados/tarefa/:tarefaId', (req, res) => {
+  const { tarefaId } = req.params;
+  
+  const sql = 'DELETE FROM feriados WHERE tarefa_id = ?';
+  db.query(sql, [tarefaId], (err, result) => {
+    if (err) {
+      console.error('Erro ao remover feriados da tarefa:', err);
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao remover feriados da tarefa',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      message: 'Feriados removidos com sucesso!'
+    });
+  });
+});
+
+// Remover execuções de uma tarefa específica
+app.delete('/execucoes/tarefa/:tarefaId', (req, res) => {
+  const { tarefaId } = req.params;
+  
+  const sql = 'DELETE FROM execucoes_tarefas WHERE tarefa_id = ?';
+  db.query(sql, [tarefaId], (err, result) => {
+    if (err) {
+      console.error('Erro ao remover execuções da tarefa:', err);
+      res.status(500).send({
+        success: false,
+        message: 'Erro ao remover execuções da tarefa',
+        error: err.message
+      });
+      return;
+    }
+    
+    res.send({
+      success: true,
+      message: 'Execuções removidas com sucesso!'
     });
   });
 });

@@ -245,15 +245,24 @@ const Admin = ({ navigation }: { navigation: any }) => {
   };
 
   const adicionarFeriadoHoje = async (tarefaId: number) => {
-    const hoje = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+    const hoje = new Date().toISOString().split('T')[0];
     try {
+      console.log('Adicionando feriado para tarefa:', tarefaId);
       const response = await axios.post('http://192.168.1.55:3001/feriados', {
         data: hoje,
         tarefa_id: tarefaId
       });
       if (response.data.success) {
+        console.log('Feriado adicionado com sucesso');
+        // Atualiza o estado imediatamente
+        setTarefas(prevTarefas => 
+          prevTarefas.map(tarefa => 
+            tarefa.id === tarefaId 
+              ? { ...tarefa, tem_feriado_hoje: true }
+              : tarefa
+          )
+        );
         Alert.alert('Sucesso', 'Feriado registrado para hoje com sucesso!');
-        buscarFeriados();
       }
     } catch (error) {
       console.error('Erro ao cadastrar feriado:', error);
@@ -273,6 +282,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
         Alert.alert('Sucesso', 'Feriado cadastrado com sucesso!');
         setNovoFeriado({ data: "", tarefa_id: null });
         buscarFeriados();
+        buscarTarefas();
       }
     } catch (error) {
       console.error('Erro ao cadastrar feriado:', error);
@@ -286,6 +296,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
       if (response.data.success) {
         Alert.alert('Sucesso', 'Feriado removido com sucesso!');
         buscarFeriados();
+        buscarTarefas();
       }
     } catch (error) {
       console.error('Erro ao remover feriado:', error);
@@ -367,11 +378,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Deletar tarefa
   const deletarTarefa = async (tarefaId: number) => {
     try {
-      const response = await axios.delete(`http://192.168.1.55:3001/tarefas/${tarefaId}`);
-      if (response.data.success) {
-        Alert.alert("Sucesso", "Tarefa excluída com sucesso!");
-        buscarTarefas();
-      }
+      await axios.delete(`http://192.168.1.55:3001/tarefas/${tarefaId}`);
+      buscarTarefas();
     } catch (error) {
       console.error("Erro ao excluir tarefa:", error);
       Alert.alert("Erro", "Não foi possível excluir a tarefa.");
@@ -492,6 +500,39 @@ const Admin = ({ navigation }: { navigation: any }) => {
       Alert.alert("Erro", "Não foi possível registrar o retorno.");
     }
   };
+
+  // Remover feriado de hoje
+  const removerFeriadoHoje = async (tarefaId: number) => {
+    const hoje = new Date().toISOString().split('T')[0];
+    try {
+      console.log('Removendo feriado da tarefa:', tarefaId);
+      const response = await axios.delete(`http://192.168.1.55:3001/feriados/${tarefaId}/${hoje}`);
+      if (response.data.success) {
+        console.log('Feriado removido com sucesso');
+        // Atualiza o estado imediatamente
+        setTarefas(prevTarefas => 
+          prevTarefas.map(tarefa => 
+            tarefa.id === tarefaId 
+              ? { ...tarefa, tem_feriado_hoje: false }
+              : tarefa
+          )
+        );
+        Alert.alert('Sucesso', 'Feriado removido com sucesso!');
+      }
+    } catch (error) {
+      console.error('Erro ao remover feriado:', error);
+      Alert.alert('Erro', 'Não foi possível remover o feriado.');
+    }
+  };
+
+  // Adiciona um useEffect para monitorar mudanças no estado das tarefas
+  useEffect(() => {
+    console.log('Estado das tarefas atualizado:', tarefas.map(t => ({
+      id: t.id,
+      nome: t.nome,
+      tem_feriado_hoje: t.tem_feriado_hoje
+    })));
+  }, [tarefas]);
 
   useEffect(() => {
     const loadUserData = async () => {
@@ -851,11 +892,26 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
                     <TouchableOpacity
                       style={[styles.button, styles.feriadoButton, tarefa.tem_feriado_hoje && styles.feriadoAtivo]}
-                      onPress={() => adicionarFeriadoHoje(tarefa.id)}
+                      onPress={() => {
+                        if (tarefa.tem_feriado_hoje) {
+                          removerFeriadoHoje(tarefa.id);
+                        } else {
+                          adicionarFeriadoHoje(tarefa.id);
+                        }
+                      }}
                     >
                       <View style={styles.feriadoContent}>
-                        <FontAwesome name="calendar" size={16} color={tarefa.tem_feriado_hoje ? "#fff" : "#000"} />
-                        <Text style={[styles.buttonText, tarefa.tem_feriado_hoje && styles.feriadoAtivoText]}>Feriado</Text>
+                        <FontAwesome 
+                          name="calendar" 
+                          size={16} 
+                          color={tarefa.tem_feriado_hoje ? "#fff" : "#000"} 
+                        />
+                        <Text style={[
+                          styles.buttonText, 
+                          tarefa.tem_feriado_hoje && styles.feriadoAtivoText
+                        ]}>
+                          {tarefa.tem_feriado_hoje ? "Desmarcar Feriado" : "Marcar como Feriado"}
+                        </Text>
                       </View>
                     </TouchableOpacity>
                   </View>
