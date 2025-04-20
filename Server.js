@@ -892,7 +892,7 @@ app.get("/tarefas/:id/historico", (req, res) => {
 
 // Listar pessoas com suas posições
 app.get("/pessoas/ordem", (req, res) => {
-  const sql = `SELECT * FROM view_pessoas_ordem ORDER BY posicao, name`;
+  const sql = `SELECT u.* FROM users u ORDER BY u.ordem ASC`;
 
   db.query(sql, (err, results) => {
     if (err) {
@@ -1461,25 +1461,26 @@ app.get("/viagens/usuario/:id", (req, res) => {
 
 /* Rotas de Tarefas do Usuário */
 
-// Rota para buscar tarefas do usuário
+// Buscar tarefas do usuário
 app.get("/tarefas/usuario/:id", async (req, res) => {
-  const userId = req.params.id;
+  const { id } = req.params;
 
   try {
-    // Verificar se o usuário está em viagem
-    const [userStatus] = await new Promise((resolve, reject) => {
+    // Verifica se o usuário está em viagem
+    const emViagem = await new Promise((resolve, reject) => {
       db.query(
         "SELECT em_viagem FROM users WHERE id = ?",
-        [userId],
+        [id],
         (err, results) => {
           if (err) reject(err);
-          else resolve(results);
+          else resolve(results[0]?.em_viagem || false);
         }
       );
     });
 
-    if (userStatus.em_viagem) {
-      return res.json({
+    // Se estiver em viagem, retorna sem tarefas
+    if (emViagem) {
+      return res.send({
         success: true,
         em_viagem: true,
         tarefas_hoje: [],
@@ -1487,53 +1488,48 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
       });
     }
 
-    // Buscar tarefas para hoje
+    // Busca tarefas para hoje
     const tarefasHoje = await new Promise((resolve, reject) => {
-      db.query(
-        `
-        SELECT id, nome, intervalo_dias, proxima_execucao
-        FROM view_tarefas_agendadas
-        WHERE responsavel_id = ?
-        AND esta_pausada = FALSE
-        AND CURDATE() >= COALESCE(proxima_execucao, CURDATE())
-        ORDER BY nome
-        `,
-        [userId],
-        (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        }
-      );
+      const sql = `
+        SELECT 
+          t.id, 
+          t.nome, 
+          t.intervalo_dias, 
+          t.proxima_execucao
+        FROM tarefas t
+        WHERE t.responsavel_id = ?
+        AND t.esta_pausada = FALSE
+        AND CURDATE() >= COALESCE(t.proxima_execucao, CURDATE())
+        ORDER BY t.nome
+      `;
+      
+      db.query(sql, [id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
     });
 
-    // Buscar histórico dos últimos 7 dias
+    // Busca histórico dos últimos 7 dias
     const historico = await new Promise((resolve, reject) => {
-      db.query(
-        `
+      const sql = `
         SELECT 
           DATE_FORMAT(e.data_execucao, '%d/%m/%Y') as data,
-          GROUP_CONCAT(t.nome) as tarefas
+          GROUP_CONCAT(t.nome ORDER BY t.nome SEPARATOR ', ') as tarefas
         FROM execucoes_tarefas e
         JOIN tarefas t ON e.tarefa_id = t.id
         WHERE e.usuario_id = ?
         AND e.data_execucao >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         GROUP BY e.data_execucao
         ORDER BY e.data_execucao DESC
-        `,
-        [userId],
-        (err, results) => {
-          if (err) reject(err);
-          else {
-            resolve(results.map(row => ({
-              data: row.data,
-              tarefas: row.tarefas.split(',')
-            })));
-          }
-        }
-      );
+      `;
+
+      db.query(sql, [id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
     });
 
-    res.json({
+    res.send({
       success: true,
       em_viagem: false,
       tarefas_hoje: tarefasHoje,
@@ -1542,9 +1538,10 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
 
   } catch (error) {
     console.error("Erro ao buscar tarefas do usuário:", error);
-    res.status(500).json({
+    res.status(500).send({
       success: false,
-      message: "Erro ao buscar tarefas do usuário"
+      message: "Erro ao buscar tarefas do usuário",
+      error: error.message
     });
   }
 });

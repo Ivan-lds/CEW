@@ -411,8 +411,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
     try {
       const response = await axios.get("http://192.168.1.55:3001/pessoas/ordem");
       if (response.data.success) {
-        setPessoas(response.data.pessoas);
-        setPessoasOrdenadas(response.data.pessoas);
+        const pessoasOrdenadas = response.data.pessoas;
+        setPessoas(pessoasOrdenadas);
+        setPessoasOrdenadas(pessoasOrdenadas);
       }
     } catch (error) {
       console.error("Erro ao buscar pessoas:", error);
