@@ -29,6 +29,7 @@ interface Tarefa {
   ultimo_responsavel: string | null;
   ultima_execucao: string | null;
   responsavel_nome: string | null;
+  responsavel_id: number | null;
   proxima_execucao: string | null;
 }
 
@@ -65,6 +66,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [viagemAtual, setViagemAtual] = useState<any>(null);
   const [pessoasOrdenadas, setPessoasOrdenadas] = useState<any[]>([]);
   const [isOrdenacaoAtiva, setIsOrdenacaoAtiva] = useState(false);
+  const [isReatribuirModalVisible, setIsReatribuirModalVisible] = useState(false);
+  const [tarefaParaReatribuir, setTarefaParaReatribuir] = useState<Tarefa | null>(null);
+  const [usuariosDisponiveis, setUsuariosDisponiveis] = useState<any[]>([]);
+  const [novoResponsavelId, setNovoResponsavelId] = useState<number | null>(null);
 
   // Carregar pessoas quando o componente montar
   useEffect(() => {
@@ -573,6 +578,47 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   }, [isGerenciarPessoasVisible]);
 
+  // Função para buscar usuários disponíveis
+  const buscarUsuariosDisponiveis = async () => {
+    try {
+      const response = await axios.get("http://192.168.1.55:3001/users");
+      const usuariosAtivos = response.data.filter(user => !user.em_viagem);
+      setUsuariosDisponiveis(usuariosAtivos);
+    } catch (error) {
+      console.error("Erro ao buscar usuários:", error);
+      Alert.alert("Erro", "Não foi possível carregar a lista de usuários.");
+    }
+  };
+
+  // Função para reatribuir tarefa
+  const reatribuirTarefa = async () => {
+    if (!tarefaParaReatribuir || !novoResponsavelId) {
+      Alert.alert("Erro", "Por favor, selecione um novo responsável.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://192.168.1.55:3001/tarefas/${tarefaParaReatribuir.id}/reatribuir`,
+        { novo_responsavel_id: novoResponsavelId }
+      );
+
+      if (response.data.success) {
+        Alert.alert("Sucesso", "Tarefa reatribuída com sucesso!");
+        setIsReatribuirModalVisible(false);
+        setTarefaParaReatribuir(null);
+        setNovoResponsavelId(null);
+        buscarTarefas();
+      }
+    } catch (error) {
+      console.error("Erro ao reatribuir tarefa:", error);
+      Alert.alert(
+        "Erro",
+        error.response?.data?.message || "Não foi possível reatribuir a tarefa."
+      );
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Administração</Text>
@@ -879,6 +925,16 @@ const Admin = ({ navigation }: { navigation: any }) => {
                           <FontAwesome name="edit" size={20} color="#007bff" />
                         </TouchableOpacity>
                         <TouchableOpacity
+                          onPress={() => {
+                            setTarefaParaReatribuir(tarefa);
+                            buscarUsuariosDisponiveis();
+                            setIsReatribuirModalVisible(true);
+                          }}
+                          style={styles.acaoButton}
+                        >
+                          <FontAwesome name="exchange" size={20} color="#28a745" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
                           onPress={() => deletarTarefa(tarefa.id)}
                           style={styles.acaoButton}
                         >
@@ -1110,6 +1166,63 @@ const Admin = ({ navigation }: { navigation: any }) => {
                   onPress={() => {
                     setIsRetornoModalVisible(false);
                     setDataRetorno("");
+                  }}
+                >
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de Reatribuição */}
+        <Modal
+          visible={isReatribuirModalVisible}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setIsReatribuirModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                Reatribuir Tarefa: {tarefaParaReatribuir?.nome}
+              </Text>
+
+              <Text style={styles.label}>Selecione o novo responsável:</Text>
+              <ScrollView style={styles.usuariosList}>
+                {usuariosDisponiveis.map((usuario) => (
+                  <TouchableOpacity
+                    key={usuario.id}
+                    style={[
+                      styles.usuarioOption,
+                      novoResponsavelId === usuario.id && styles.usuarioSelected
+                    ]}
+                    onPress={() => setNovoResponsavelId(usuario.id)}
+                  >
+                    <Text style={[
+                      styles.usuarioText,
+                      novoResponsavelId === usuario.id && styles.usuarioTextSelected
+                    ]}>
+                      {usuario.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.saveButton]}
+                  onPress={reatribuirTarefa}
+                >
+                  <Text style={styles.buttonText}>Confirmar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setIsReatribuirModalVisible(false);
+                    setTarefaParaReatribuir(null);
+                    setNovoResponsavelId(null);
                   }}
                 >
                   <Text style={styles.buttonText}>Cancelar</Text>
@@ -1509,7 +1622,30 @@ const styles = StyleSheet.create({
   feriadoAtivoText: {
     color: "#fff",
   },
-
+  usuariosList: {
+    maxHeight: 200,
+    marginVertical: 10,
+  },
+  usuarioOption: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+  },
+  usuarioSelected: {
+    backgroundColor: "#007bff",
+  },
+  usuarioText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  usuarioTextSelected: {
+    color: "#fff",
+  },
+  responsavelText: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 5,
+  },
 });
 
 export default Admin;

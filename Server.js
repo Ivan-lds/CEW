@@ -1565,6 +1565,70 @@ app.get("/pessoas/ordem", (req, res) => {
   });
 });
 
+// Função para atualizar responsáveis das tarefas baseado na ordem dos usuários
+const atualizarResponsaveisPorOrdem = async () => {
+  return new Promise((resolve, reject) => {
+    // Primeiro, pega todas as tarefas que precisam de atualização
+    const sqlTarefas = `
+      SELECT t.id, t.nome
+      FROM tarefas t
+      WHERE t.esta_pausada = FALSE
+      ORDER BY t.id
+    `;
+
+    db.query(sqlTarefas, (err, tarefas) => {
+      if (err) {
+        console.error("Erro ao buscar tarefas:", err);
+        return reject(err);
+      }
+
+      if (tarefas.length === 0) {
+        return resolve();
+      }
+
+      // Busca usuários disponíveis ordenados
+      const sqlUsuarios = `
+        SELECT id 
+        FROM users 
+        WHERE em_viagem = FALSE 
+        ORDER BY ordem ASC
+      `;
+
+      db.query(sqlUsuarios, (err, usuarios) => {
+        if (err) {
+          console.error("Erro ao buscar usuários:", err);
+          return reject(err);
+        }
+
+        if (usuarios.length === 0) {
+          return resolve();
+        }
+
+        // Distribui as tarefas entre os usuários de forma circular
+        const atualizacoes = tarefas.map((tarefa, index) => {
+          const usuarioIndex = index % usuarios.length;
+          const usuarioId = usuarios[usuarioIndex].id;
+          
+          return new Promise((resolveUpdate, rejectUpdate) => {
+            db.query(
+              "UPDATE tarefas SET responsavel_id = ? WHERE id = ?",
+              [usuarioId, tarefa.id],
+              (err) => {
+                if (err) rejectUpdate(err);
+                else resolveUpdate();
+              }
+            );
+          });
+        });
+
+        Promise.all(atualizacoes)
+          .then(() => resolve())
+          .catch(err => reject(err));
+      });
+    });
+  });
+};
+
 app.post("/pessoas/reordenar", (req, res) => {
   const { ordem } = req.body;
   
@@ -1576,35 +1640,65 @@ app.post("/pessoas/reordenar", (req, res) => {
     return;
   }
 
-  // Atualiza a ordem de cada pessoa
-  const updatePromises = ordem.map((id, index) => {
-    return new Promise((resolve, reject) => {
-      db.query(
-        "UPDATE users SET ordem = ? WHERE id = ?",
-        [index + 1, id],
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-  });
-
-  Promise.all(updatePromises)
-    .then(() => {
-      res.send({
-        success: true,
-        message: "Ordem atualizada com sucesso"
-      });
-    })
-    .catch((err) => {
-      console.error("Erro ao atualizar ordem:", err);
-      res.status(500).send({
+  // Inicia uma transação para garantir consistência
+  db.beginTransaction(async (err) => {
+    if (err) {
+      console.error("Erro ao iniciar transação:", err);
+      return res.status(500).send({
         success: false,
-        message: "Erro ao atualizar ordem",
+        message: "Erro ao iniciar atualização da ordem",
         error: err.message
       });
-    });
+    }
+
+    try {
+      // Atualiza a ordem de cada pessoa
+      await Promise.all(ordem.map((id, index) => {
+        return new Promise((resolve, reject) => {
+          db.query(
+            "UPDATE users SET ordem = ? WHERE id = ?",
+            [index + 1, id],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+      }));
+
+      // Atualiza os responsáveis das tarefas
+      await atualizarResponsaveisPorOrdem();
+
+      // Commit da transação
+      db.commit((err) => {
+        if (err) {
+          return db.rollback(() => {
+            console.error("Erro ao fazer commit da transação:", err);
+            res.status(500).send({
+              success: false,
+              message: "Erro ao salvar alterações",
+              error: err.message
+            });
+          });
+        }
+
+        res.send({
+          success: true,
+          message: "Ordem atualizada e responsáveis redistribuídos com sucesso"
+        });
+      });
+
+    } catch (error) {
+      return db.rollback(() => {
+        console.error("Erro durante a atualização:", error);
+        res.status(500).send({
+          success: false,
+          message: "Erro ao atualizar ordem",
+          error: error.message
+        });
+      });
+    }
+  });
 });
 
 /* Rotas para gerenciamento de feriados */
@@ -1811,6 +1905,81 @@ app.delete('/execucoes/tarefa/:tarefaId', (req, res) => {
     res.send({
       success: true,
       message: 'Execuções removidas com sucesso!'
+    });
+  });
+});
+
+// Reatribuir tarefa manualmente
+app.post("/tarefas/:id/reatribuir", (req, res) => {
+  const { id } = req.params;
+  const { novo_responsavel_id } = req.body;
+
+  if (!novo_responsavel_id) {
+    return res.status(400).send({
+      success: false,
+      message: "ID do novo responsável é obrigatório"
+    });
+  }
+
+  // Verifica se o novo responsável existe e não está em viagem
+  const sqlVerificaUsuario = `
+    SELECT id, em_viagem 
+    FROM users 
+    WHERE id = ?
+  `;
+
+  db.query(sqlVerificaUsuario, [novo_responsavel_id], (err, usuarios) => {
+    if (err) {
+      console.error("Erro ao verificar usuário:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao verificar usuário",
+        error: err.message
+      });
+    }
+
+    if (usuarios.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Usuário não encontrado"
+      });
+    }
+
+    if (usuarios[0].em_viagem) {
+      return res.status(400).send({
+        success: false,
+        message: "Não é possível atribuir tarefa a um usuário em viagem"
+      });
+    }
+
+    // Atualiza o responsável da tarefa
+    const sqlAtualizaTarefa = `
+      UPDATE tarefas 
+      SET responsavel_id = ?
+      WHERE id = ?
+    `;
+
+    db.query(sqlAtualizaTarefa, [novo_responsavel_id, id], (err, result) => {
+      if (err) {
+        console.error("Erro ao reatribuir tarefa:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao reatribuir tarefa",
+          error: err.message
+        });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).send({
+          success: false,
+          message: "Tarefa não encontrada"
+        });
+      }
+
+      res.send({
+        success: true,
+        message: "Tarefa reatribuída com sucesso"
+      });
     });
   });
 });
