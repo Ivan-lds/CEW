@@ -19,13 +19,15 @@ interface Tarefa {
   id: number;
   nome: string;
   intervalo_dias: number;
-  esta_pausada: boolean;
-  status: string;
-  data_prevista: string;
-  ultimo_responsavel: string | null;
-  ultima_execucao: string | null;
+  responsavel_id: number | null;
   responsavel_nome: string | null;
+  esta_pausada: boolean;
   proxima_execucao: string | null;
+  data_execucao: string | null;
+  ultimo_responsavel: string | null;
+  ultimo_responsavel_id: number | null;
+  tem_feriado_hoje: boolean;
+  status: 'pendente' | 'em_dia' | 'pausada';
 }
 
 interface Execucao {
@@ -41,8 +43,9 @@ const Tasks = () => {
   const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(null);
   const [intervaloTemp, setIntervaloTemp] = useState("");
   const [historico, setHistorico] = useState<Execucao[]>([]);
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [userId, setUserId] = useState<number | null>(null);
+  const [tarefaExecutando, setTarefaExecutando] = useState<number | null>(null);
 
   // Buscar ID do usuário logado
   useEffect(() => {
@@ -162,10 +165,11 @@ const Tasks = () => {
   // Registrar execução de tarefa
   const executarTarefa = async (tarefa: Tarefa) => {
     if (!userId) {
-      Alert.alert("Erro", "Usuário não identificado.");
+      Alert.alert("Erro", "Usuário não identificado. Por favor, faça login novamente.");
       return;
     }
 
+    setTarefaExecutando(tarefa.id);
     try {
       const response = await axios.post(`http://192.168.1.55:3001/tarefas/${tarefa.id}/executar`, {
         usuario_id: userId,
@@ -173,24 +177,36 @@ const Tasks = () => {
       });
 
       if (response.data.success) {
-        Alert.alert("Sucesso", "Tarefa marcada como executada!");
-        buscarTarefas();
+        Alert.alert("Sucesso", "Tarefa marcada como concluída!");
+        // Primeiro atualiza os responsáveis e depois busca as tarefas
+        await atualizarResponsaveis();
+        await buscarTarefas();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao executar tarefa:", error);
-      Alert.alert("Erro", "Não foi possível registrar a execução da tarefa.");
+      Alert.alert(
+        "Erro",
+        error.response?.data?.message || "Não foi possível marcar a tarefa como concluída. Tente novamente."
+      );
+    } finally {
+      setTarefaExecutando(null);
     }
   };
 
   // Atualizar tarefas periodicamente
   useEffect(() => {
-    buscarTarefas();
-    atualizarResponsaveis();
+    const fetchData = async () => {
+      try {
+        await buscarTarefas();
+        await atualizarResponsaveis();
+      } catch (error) {
+        console.error("Erro ao atualizar dados:", error);
+      }
+    };
 
-    const interval = setInterval(() => {
-      buscarTarefas();
-      atualizarResponsaveis();
-    }, 60000); // Atualiza a cada minuto
+    fetchData();
+
+    const interval = setInterval(fetchData, 60000); // Atualiza a cada minuto
 
     return () => clearInterval(interval);
   }, []);
@@ -265,9 +281,9 @@ const Tasks = () => {
                 </Text>
               )}
 
-              {tarefa.ultimo_responsavel && (
-                <Text style={styles.lastExecutionText}>
-                  Última execução: {tarefa.ultimo_responsavel} ({tarefa.ultima_execucao})
+              {tarefa.ultimo_responsavel && tarefa.data_execucao && (
+                <Text style={styles.lastExecution}>
+                  Última execução: {tarefa.ultimo_responsavel} ({tarefa.data_execucao})
                 </Text>
               )}
 
@@ -285,10 +301,18 @@ const Tasks = () => {
 
                 {!tarefa.esta_pausada && tarefa.responsavel_nome && (
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.executeButton]}
+                    style={[
+                      styles.button,
+                      tarefaExecutando === tarefa.id && styles.buttonDisabled
+                    ]}
                     onPress={() => executarTarefa(tarefa)}
+                    disabled={tarefaExecutando === tarefa.id}
                   >
-                    <Text style={styles.buttonText}>Marcar como Feita</Text>
+                    {tarefaExecutando === tarefa.id ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Marcar como Feita</Text>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
@@ -432,7 +456,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginBottom: 5,
   },
-  lastExecutionText: {
+  lastExecution: {
     fontSize: 14,
     color: "#666",
     marginBottom: 10,
@@ -455,8 +479,11 @@ const styles = StyleSheet.create({
   historyButton: {
     backgroundColor: "#6c757d",
   },
-  executeButton: {
+  button: {
     backgroundColor: "#28a745",
+  },
+  buttonDisabled: {
+    backgroundColor: "#6c757d",
   },
   buttonText: {
     color: "#fff",

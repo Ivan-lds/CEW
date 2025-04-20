@@ -11,6 +11,7 @@ import {
   StatusBar,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -43,6 +44,7 @@ const Home = () => {
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [emViagem, setEmViagem] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [tarefaExecutando, setTarefaExecutando] = useState<number | null>(null);
   const navigation = useNavigation();
 
   const notifications: Notification[] = [
@@ -96,14 +98,21 @@ const Home = () => {
 
   const buscarTarefasUsuario = async (id: number) => {
     try {
+      setCarregando(true);
       const response = await axios.get(`http://192.168.1.55:3001/tarefas/usuario/${id}`);
       if (response.data.success) {
         setEmViagem(response.data.em_viagem);
-        setTarefasHoje(response.data.tarefas_hoje);
-        setHistorico(response.data.historico);
+        setTarefasHoje(response.data.tarefas_hoje || []);
+        setHistorico(response.data.historico || []);
+      } else {
+        console.error("Erro na resposta do servidor:", response.data);
+        Alert.alert("Erro", "Não foi possível carregar as tarefas");
       }
     } catch (error) {
       console.error("Erro ao buscar tarefas do usuário:", error);
+      Alert.alert("Erro", "Não foi possível carregar as tarefas. Verifique sua conexão.");
+    } finally {
+      setCarregando(false);
     }
   };
 
@@ -114,18 +123,38 @@ const Home = () => {
   const executarTarefa = async (tarefaId: number) => {
     if (!userId) return;
 
+    setTarefaExecutando(tarefaId);
     try {
-      await axios.post(`http://192.168.1.55:3001/tarefas/${tarefaId}/executar`, {
+      const response = await axios.post(`http://192.168.1.55:3001/tarefas/${tarefaId}/executar`, {
         usuario_id: userId,
         data_execucao: new Date().toISOString().split('T')[0]
       });
 
-      // Atualiza as tarefas após a execução
-      await buscarTarefasUsuario(userId);
+      if (response.data.success) {
+        Alert.alert("Sucesso", "Tarefa marcada como concluída!");
+        // Atualiza as tarefas após a execução
+        await buscarTarefasUsuario(userId);
+      } else {
+        throw new Error(response.data.message || 'Erro ao executar tarefa');
+      }
     } catch (error) {
       console.error("Erro ao executar tarefa:", error);
+      Alert.alert("Erro", "Não foi possível marcar a tarefa como concluída. Tente novamente.");
+      // Recarrega as tarefas mesmo em caso de erro para garantir consistência
+      await buscarTarefasUsuario(userId);
+    } finally {
+      setTarefaExecutando(null);
     }
   };
+
+  if (!userId || carregando) {
+    return (
+      <SafeAreaView style={[styles.safeContainer, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#007bff" />
+        <Text style={styles.loadingText}>Carregando...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -163,10 +192,18 @@ const Home = () => {
                     <View key={tarefa.id} style={styles.tarefaItem}>
                       <Text style={styles.tarefaNome}>{tarefa.nome}</Text>
                       <TouchableOpacity
-                        style={styles.executarButton}
+                        style={[
+                          styles.executarButton,
+                          tarefaExecutando === tarefa.id && styles.executarButtonDisabled
+                        ]}
                         onPress={() => executarTarefa(tarefa.id)}
+                        disabled={tarefaExecutando === tarefa.id}
                       >
-                        <Text style={styles.executarButtonText}>✓</Text>
+                        {tarefaExecutando === tarefa.id ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={styles.executarButtonText}>✓</Text>
+                        )}
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -187,7 +224,7 @@ const Home = () => {
                     <View key={index} style={styles.historicoItem}>
                       <Text style={styles.historicoData}>{item.data}</Text>
                       <Text style={styles.historicoTarefas}>
-                        {item.tarefas.join(", ")}
+                        {Array.isArray(item.tarefas) ? item.tarefas.join(", ") : ""}
                       </Text>
                     </View>
                   ))}
@@ -271,6 +308,15 @@ const Home = () => {
 };
 
 const styles = StyleSheet.create({
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#007bff',
+  },
   safeContainer: {
     flex: 1,
     paddingTop: StatusBar.currentHeight,
@@ -439,6 +485,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
     marginTop: 2,
+  },
+  executarButtonDisabled: {
+    backgroundColor: "#6c757d",
   },
 });
 

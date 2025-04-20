@@ -22,15 +22,15 @@ interface Tarefa {
   id: number;
   nome: string;
   intervalo_dias: number;
-  esta_pausada: boolean;
-  tem_feriado_hoje: boolean;
-  status: string;
-  data_prevista: string;
-  ultimo_responsavel: string | null;
-  ultima_execucao: string | null;
-  responsavel_nome: string | null;
   responsavel_id: number | null;
+  responsavel_nome: string | null;
+  esta_pausada: boolean;
   proxima_execucao: string | null;
+  data_execucao: string | null;
+  ultimo_responsavel: string | null;
+  ultimo_responsavel_id: number | null;
+  tem_feriado_hoje: boolean;
+  status: 'pendente' | 'em_dia' | 'pausada';
 }
 
 const Admin = ({ navigation }: { navigation: any }) => {

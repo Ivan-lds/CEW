@@ -49,8 +49,11 @@ const Login = ({ navigation }: { navigation: any }) => {
         
         console.log("Navegando para:", response.data.role === "admin" ? "Home" : "Home");
         
-        // Sempre navega para Home primeiro
-        navigation.navigate("Home");
+        // Reseta a pilha de navegação e vai para Home
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }]
+        });
       } else {
         Alert.alert("Erro", response.data.message);
       }

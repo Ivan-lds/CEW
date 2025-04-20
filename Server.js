@@ -574,55 +574,6 @@ app.delete("/tarefas/:id", (req, res) => {
   });
 });
 
-// Inicializar tarefas padrão se não existirem
-app.post("/tarefas/inicializar", (req, res) => {
-  const tarefasPadrao = [
-    { nome: "Casa", intervalo_dias: 2 },
-    { nome: "Fogão", intervalo_dias: 2 },
-    { nome: "Pia-mesa", intervalo_dias: 1 },
-    { nome: "Lixo", intervalo_dias: 1 }
-  ];
-
-  // Primeiro, verifica se já existem tarefas
-  db.query("SELECT COUNT(*) as count FROM tarefas", (err, results) => {
-    if (err) {
-      console.error("Erro ao verificar tarefas:", err);
-      return res.status(500).send({
-        success: false,
-        message: "Erro ao verificar tarefas existentes",
-        error: err.message
-      });
-    }
-
-    if (results[0].count > 0) {
-      return res.send({
-        success: true,
-        message: "Tarefas já estão inicializadas"
-      });
-    }
-
-    // Se não existem tarefas, insere as padrão
-    const sql = "INSERT INTO tarefas (nome, intervalo_dias, esta_pausada) VALUES ?";
-    const values = tarefasPadrao.map(t => [t.nome, t.intervalo_dias, false]);
-
-    db.query(sql, [values], (err, result) => {
-      if (err) {
-        console.error("Erro ao inicializar tarefas:", err);
-        return res.status(500).send({
-          success: false,
-          message: "Erro ao inicializar tarefas",
-          error: err.message
-        });
-      }
-
-      res.status(201).send({
-        success: true,
-        message: "Tarefas padrão inicializadas com sucesso!"
-      });
-    });
-  });
-});
-
 /* Rotas de Agendamento de Tarefas */
 
 // Verificar e atualizar responsáveis das tarefas
@@ -749,9 +700,9 @@ app.get("/tarefas/agendamento", (req, res) => {
     SELECT 
       t.*,
       u.name as responsavel_nome,
-      e.data_execucao as ultima_execucao,
-      e.usuario_id as ultimo_responsavel_id,
-      u2.name as ultimo_responsavel,
+      ultima_exec.data_execucao as ultima_data_execucao,
+      ultima_exec.usuario_id as ultimo_usuario_id,
+      u2.name as ultimo_responsavel_nome,
       EXISTS(
         SELECT 1 
         FROM feriados f 
@@ -766,16 +717,21 @@ app.get("/tarefas/agendamento", (req, res) => {
     FROM tarefas t
     LEFT JOIN users u ON t.responsavel_id = u.id
     LEFT JOIN (
-      SELECT tarefa_id, MAX(data_execucao) as max_data
-      FROM execucoes_tarefas
-      GROUP BY tarefa_id
+      SELECT 
+        tarefa_id,
+        data_execucao,
+        usuario_id
+      FROM execucoes_tarefas e1
+      WHERE data_execucao = (
+        SELECT MAX(data_execucao)
+        FROM execucoes_tarefas e2
+        WHERE e2.tarefa_id = e1.tarefa_id
+      )
     ) ultima_exec ON t.id = ultima_exec.tarefa_id
-    LEFT JOIN execucoes_tarefas e ON e.tarefa_id = t.id 
-      AND e.data_execucao = ultima_exec.max_data
-    LEFT JOIN users u2 ON e.usuario_id = u2.id
+    LEFT JOIN users u2 ON ultima_exec.usuario_id = u2.id
     ORDER BY t.nome;
   `;
-
+  
   db.query(sql, (err, results) => {
     if (err) {
       console.error("Erro ao buscar agendamento:", err);
@@ -792,8 +748,10 @@ app.get("/tarefas/agendamento", (req, res) => {
       esta_pausada: !!tarefa.esta_pausada,
       tem_feriado_hoje: !!tarefa.tem_feriado_hoje,
       data_prevista: tarefa.data_prevista ? new Date(tarefa.data_prevista).toISOString().split('T')[0] : null,
-      ultima_execucao: tarefa.ultima_execucao ? new Date(tarefa.ultima_execucao).toISOString().split('T')[0] : null,
-      proxima_execucao: tarefa.proxima_execucao ? new Date(tarefa.proxima_execucao).toISOString().split('T')[0] : null
+      data_execucao: tarefa.ultima_data_execucao ? new Date(tarefa.ultima_data_execucao).toISOString().split('T')[0] : null,
+      proxima_execucao: tarefa.proxima_execucao ? new Date(tarefa.proxima_execucao).toISOString().split('T')[0] : null,
+      ultimo_responsavel_id: tarefa.ultimo_usuario_id,
+      ultimo_responsavel: tarefa.ultimo_responsavel_nome
     }));
 
     res.send({
@@ -806,51 +764,119 @@ app.get("/tarefas/agendamento", (req, res) => {
 // Registrar execução de tarefa
 app.post("/tarefas/:id/executar", (req, res) => {
   const { id } = req.params;
-  const { usuario_id, data_execucao } = req.body;
+  const { usuario_id, data_execucao, tipo = "manual" } = req.body;
 
-  // Primeiro verifica se a tarefa está pausada
-  db.query("SELECT esta_pausada FROM tarefas WHERE id = ?", [id], (err, results) => {
+  // Usar transação para garantir consistência
+  db.beginTransaction(err => {
     if (err) {
-      console.error("Erro ao verificar status da tarefa:", err);
+      console.error("Erro ao iniciar transação:", err);
       return res.status(500).send({
         success: false,
-        message: "Erro ao verificar status da tarefa",
+        message: "Erro ao iniciar transação",
         error: err.message
       });
     }
 
-    if (results.length === 0) {
-      return res.status(404).send({
-        success: false,
-        message: "Tarefa não encontrada"
-      });
-    }
+    // Primeiro verifica se a tarefa está pausada e obtém o intervalo_dias
+    db.query(
+      "SELECT esta_pausada, intervalo_dias FROM tarefas WHERE id = ?",
+      [id],
+      (err, results) => {
+        if (err) {
+          return db.rollback(() => {
+            console.error("Erro ao verificar status da tarefa:", err);
+            res.status(500).send({
+              success: false,
+              message: "Erro ao verificar status da tarefa",
+              error: err.message
+            });
+          });
+        }
 
-    if (results[0].esta_pausada) {
-      return res.status(400).send({
-        success: false,
-        message: "Não é possível executar uma tarefa pausada"
-      });
-    }
+        if (results.length === 0) {
+          return db.rollback(() => {
+            res.status(404).send({
+              success: false,
+              message: "Tarefa não encontrada"
+            });
+          });
+        }
 
-    // Se não estiver pausada, registra a execução
-    const sql = "INSERT INTO execucoes_tarefas (tarefa_id, usuario_id, data_execucao) VALUES (?, ?, ?)";
-    db.query(sql, [id, usuario_id, data_execucao || new Date()], (err, result) => {
-      if (err) {
-        console.error("Erro ao registrar execução:", err);
-        return res.status(500).send({
-          success: false,
-          message: "Erro ao registrar execução da tarefa",
-          error: err.message
-        });
+        if (results[0].esta_pausada) {
+          return db.rollback(() => {
+            res.status(400).send({
+              success: false,
+              message: "Não é possível executar uma tarefa pausada"
+            });
+          });
+        }
+
+        const intervalo_dias = results[0].intervalo_dias;
+        const data_exec = data_execucao || new Date().toISOString().split('T')[0];
+
+        // Registra a execução
+        const sqlInsert = `
+          INSERT INTO execucoes_tarefas 
+          (tarefa_id, usuario_id, data_execucao, tipo) 
+          VALUES (?, ?, ?, ?)
+        `;
+
+        db.query(
+          sqlInsert,
+          [id, usuario_id, data_exec, tipo],
+          (err, result) => {
+            if (err) {
+              return db.rollback(() => {
+                console.error("Erro ao registrar execução:", err);
+                res.status(500).send({
+                  success: false,
+                  message: "Erro ao registrar execução da tarefa",
+                  error: err.message
+                });
+              });
+            }
+
+            // Atualiza a próxima_execucao e ultima_execucao
+            db.query(
+              "UPDATE tarefas SET proxima_execucao = DATE_ADD(?, INTERVAL ? DAY), ultima_execucao = ? WHERE id = ?",
+              [data_exec, intervalo_dias, data_exec, id],
+              (err) => {
+                if (err) {
+                  return db.rollback(() => {
+                    console.error("Erro ao atualizar próxima execução:", err);
+                    res.status(500).send({
+                      success: false,
+                      message: "Erro ao atualizar próxima execução",
+                      error: err.message
+                    });
+                  });
+                }
+
+                // Commit da transação
+                db.commit(err => {
+                  if (err) {
+                    return db.rollback(() => {
+                      console.error("Erro ao finalizar transação:", err);
+                      res.status(500).send({
+                        success: false,
+                        message: "Erro ao finalizar transação",
+                        error: err.message
+                      });
+                    });
+                  }
+
+                  res.status(201).send({
+                    success: true,
+                    message: "Execução registrada com sucesso!",
+                    execucaoId: result.insertId
+                  });
+                });
+              }
+            );
+          }
+        );
       }
-
-      res.status(201).send({
-        success: true,
-        message: "Execução registrada com sucesso!",
-        execucaoId: result.insertId
-      });
-    });
+    );
   });
 });
 
