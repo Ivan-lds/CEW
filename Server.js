@@ -13,15 +13,15 @@ app.use(cors());
 // Configuração do multer para upload de arquivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, 'uploads');
+    const uploadDir = path.join(__dirname, "uploads");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir);
     }
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+    cb(null, Date.now() + "-" + file.originalname);
+  },
 });
 
 const upload = multer({ storage: storage });
@@ -52,6 +52,11 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
+  console.log("Tentativa de login - Dados recebidos:", { 
+    email, 
+    senhaFornecida: password 
+  });
+
   if (!email || !password) {
     return res.status(400).send({
       success: false,
@@ -70,16 +75,21 @@ app.post("/login", (req, res) => {
     }
 
     if (results.length === 0) {
+      console.log("Usuário não encontrado");
       return res
         .status(401)
         .send({ success: false, message: "Email ou senha incorretos." });
     }
 
     const user = results[0];
-    console.log("Usuário encontrado no banco:", user);
+    console.log("Comparação de senhas:", {
+      senhaFornecida: password,
+      senhaNoBanco: user.password,
+      saoIguais: user.password === password
+    });
 
     if (user.password === password) {
-      console.log("Login bem-sucedido para o usuário:", user);
+      console.log("Login bem-sucedido para:", user.email);
       return res.status(200).send({
         success: true,
         role: user.role,
@@ -87,11 +97,12 @@ app.post("/login", (req, res) => {
           id: user.id,
           name: user.name,
           email: user.email,
-          departamento: user.departamento || ''
+          departamento: user.departamento || "",
         },
         message: "Login realizado com sucesso!",
       });
     } else {
+      console.log("Senha incorreta para usuário:", user.email);
       return res
         .status(401)
         .send({ success: false, message: "Email ou senha incorretos." });
@@ -207,14 +218,14 @@ app.get("/users", (req, res) => {
 /*Remover Usuário*/
 app.post("/remove-user", (req, res) => {
   const { name } = req.body;
-  
+
   console.log("Tentando remover usuário:", name);
-  
+
   if (!name) {
     console.log("Nome do usuário não fornecido");
-    return res.status(400).send({ 
-      success: false, 
-      message: "Nome do usuário não fornecido" 
+    return res.status(400).send({
+      success: false,
+      message: "Nome do usuário não fornecido",
     });
   }
 
@@ -223,18 +234,18 @@ app.post("/remove-user", (req, res) => {
   db.query(checkSql, [name], (err, results) => {
     if (err) {
       console.error("Erro ao verificar usuário:", err);
-      return res.status(500).send({ 
-        success: false, 
+      return res.status(500).send({
+        success: false,
         message: "Erro ao verificar usuário",
-        error: err.message 
+        error: err.message,
       });
     }
 
     if (results.length === 0) {
       console.log("Usuário não encontrado:", name);
-      return res.status(404).send({ 
-        success: false, 
-        message: "Usuário não encontrado" 
+      return res.status(404).send({
+        success: false,
+        message: "Usuário não encontrado",
       });
     }
 
@@ -246,10 +257,10 @@ app.post("/remove-user", (req, res) => {
     db.query(deleteTarefasSql, [userId], (err, result) => {
       if (err) {
         console.error("Erro ao remover tarefas relacionadas:", err);
-        return res.status(500).send({ 
-          success: false, 
+        return res.status(500).send({
+          success: false,
           message: "Erro ao remover tarefas relacionadas",
-          error: err.message 
+          error: err.message,
         });
       }
 
@@ -260,10 +271,10 @@ app.post("/remove-user", (req, res) => {
       db.query(deleteRoupasSql, [userId], (err, result) => {
         if (err) {
           console.error("Erro ao remover registros de roupas:", err);
-          return res.status(500).send({ 
-            success: false, 
+          return res.status(500).send({
+            success: false,
             message: "Erro ao remover registros de roupas",
-            error: err.message 
+            error: err.message,
           });
         }
 
@@ -274,15 +285,16 @@ app.post("/remove-user", (req, res) => {
         db.query(deleteUserSql, [userId], (err, result) => {
           if (err) {
             console.error("Erro ao remover usuário:", err);
-            return res.status(500).send({ 
-              success: false, 
+            return res.status(500).send({
+              success: false,
               message: "Erro ao remover usuário",
-              error: err.message 
+              error: err.message,
             });
           }
 
-          /*Redefinir Senha*/ 
-          const redefinirSenha = "UPDATE users SET password = '123456' WHERE id = ?";
+          /*Redefinir Senha*/
+          const redefinirSenha =
+            "UPDATE users SET password = '123456' WHERE id = ?";
           db.query(redefinirSenha, [userId], (err, result) => {
             if (err) {
               console.error("Erro ao redefinir senha:", err);
@@ -290,9 +302,9 @@ app.post("/remove-user", (req, res) => {
           });
 
           console.log("Usuário removido com sucesso:", name);
-          res.send({ 
-            success: true, 
-            message: "Usuário removido com sucesso!" 
+          res.send({
+            success: true,
+            message: "Usuário removido com sucesso!",
           });
         });
       });
@@ -303,11 +315,11 @@ app.post("/remove-user", (req, res) => {
 /*Redefinir Senha*/
 app.post("/redefinir-senha", (req, res) => {
   const { email, newPassword } = req.body;
-  
+
   if (!email || !newPassword) {
-    return res.status(400).send({ 
-      success: false, 
-      message: "Email e nova senha são obrigatórios" 
+    return res.status(400).send({
+      success: false,
+      message: "Email e nova senha são obrigatórios",
     });
   }
 
@@ -315,23 +327,23 @@ app.post("/redefinir-senha", (req, res) => {
   db.query(sql, [newPassword, email], (err, result) => {
     if (err) {
       console.error("Erro ao redefinir senha:", err);
-      return res.status(500).send({ 
-        success: false, 
+      return res.status(500).send({
+        success: false,
         message: "Erro ao redefinir senha",
-        error: err.message 
+        error: err.message,
       });
     }
 
     if (result.affectedRows === 0) {
-      return res.status(404).send({ 
-        success: false, 
-        message: "Email não encontrado" 
+      return res.status(404).send({
+        success: false,
+        message: "Email não encontrado",
       });
     }
 
-    res.send({ 
-      success: true, 
-      message: "Senha redefinida com sucesso!" 
+    res.send({
+      success: true,
+      message: "Senha redefinida com sucesso!",
     });
   });
 });
@@ -339,11 +351,11 @@ app.post("/redefinir-senha", (req, res) => {
 /* Buscar dados do usuário logado */
 app.get("/user-data", (req, res) => {
   const { email } = req.query;
-  
+
   if (!email) {
-    return res.status(400).send({ 
-      success: false, 
-      message: "Email é obrigatório" 
+    return res.status(400).send({
+      success: false,
+      message: "Email é obrigatório",
     });
   }
 
@@ -351,22 +363,22 @@ app.get("/user-data", (req, res) => {
   db.query(sql, [email], (err, results) => {
     if (err) {
       console.error("Erro ao buscar dados do usuário:", err);
-      return res.status(500).send({ 
-        success: false, 
-        message: "Erro ao buscar dados do usuário" 
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao buscar dados do usuário",
       });
     }
 
     if (results.length === 0) {
-      return res.status(404).send({ 
-        success: false, 
-        message: "Usuário não encontrado" 
+      return res.status(404).send({
+        success: false,
+        message: "Usuário não encontrado",
       });
     }
 
-    res.send({ 
-      success: true, 
-      user: results[0] 
+    res.send({
+      success: true,
+      user: results[0],
     });
   });
 });
@@ -376,22 +388,26 @@ app.get("/user-data", (req, res) => {
 // Criar tarefa
 app.post("/tarefas", (req, res) => {
   const { nome, intervalo_dias } = req.body;
-  const sql = "INSERT INTO tarefas (nome, intervalo_dias, esta_pausada) VALUES (?, ?, false)";
-  
+  console.log("Recebido request para criar tarefa:", req.body);
+
+  const sql =
+    "INSERT INTO tarefas (nome, intervalo_dias, esta_pausada) VALUES (?, ?, false)";
+
   db.query(sql, [nome, intervalo_dias], (err, result) => {
     if (err) {
       console.error("Erro ao criar tarefa:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao criar tarefa",
-        error: err.message
+        error: err.message,
       });
     }
-    
+
+    console.log("Tarefa criada com sucesso:", result);
     res.status(201).send({
       success: true,
       message: "Tarefa criada com sucesso!",
-      taskId: result.insertId
+      taskId: result.insertId,
     });
   });
 });
@@ -408,20 +424,20 @@ app.get("/tarefas", (req, res) => {
     FROM tarefas t 
     ORDER BY t.nome
   `;
-  
+
   db.query(sql, (err, results) => {
     if (err) {
       console.error("Erro ao buscar tarefas:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao buscar tarefas",
-        error: err.message
+        error: err.message,
       });
     }
-    
+
     res.send({
       success: true,
-      tarefas: results
+      tarefas: results,
     });
   });
 });
@@ -430,36 +446,36 @@ app.get("/tarefas", (req, res) => {
 app.put("/tarefas/:id/intervalo", (req, res) => {
   const { id } = req.params;
   const { intervalo_dias } = req.body;
-  
+
   if (!intervalo_dias || intervalo_dias < 1) {
     return res.status(400).send({
       success: false,
-      message: "Intervalo de dias deve ser maior que zero"
+      message: "Intervalo de dias deve ser maior que zero",
     });
   }
 
   const sql = "UPDATE tarefas SET intervalo_dias = ? WHERE id = ?";
-  
+
   db.query(sql, [intervalo_dias, id], (err, result) => {
     if (err) {
       console.error("Erro ao atualizar intervalo da tarefa:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao atualizar intervalo da tarefa",
-        error: err.message
+        error: err.message,
       });
     }
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).send({
         success: false,
-        message: "Tarefa não encontrada"
+        message: "Tarefa não encontrada",
       });
     }
-    
+
     res.send({
       success: true,
-      message: "Intervalo da tarefa atualizado com sucesso!"
+      message: "Intervalo da tarefa atualizado com sucesso!",
     });
   });
 });
@@ -468,30 +484,30 @@ app.put("/tarefas/:id/intervalo", (req, res) => {
 app.put("/tarefas/:id/pausar", (req, res) => {
   const { id } = req.params;
   const { esta_pausada } = req.body;
-  
+
   const sql = "UPDATE tarefas SET esta_pausada = ? WHERE id = ?";
-  
+
   db.query(sql, [esta_pausada, id], (err, result) => {
     if (err) {
       console.error("Erro ao atualizar status da tarefa:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao atualizar status da tarefa",
-        error: err.message
+        error: err.message,
       });
     }
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).send({
         success: false,
-        message: "Tarefa não encontrada"
+        message: "Tarefa não encontrada",
       });
     }
-    
+
     const status = esta_pausada ? "pausada" : "retomada";
     res.send({
       success: true,
-      message: `Tarefa ${status} com sucesso!`
+      message: `Tarefa ${status} com sucesso!`,
     });
   });
 });
@@ -507,70 +523,74 @@ app.delete("/tarefas/:id", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao iniciar transação",
-        error: err.message
+        error: err.message,
       });
     }
 
     // Primeiro, deletar as execuções
-    db.query("DELETE FROM execucoes_tarefas WHERE tarefa_id = ?", [id], (err) => {
-      if (err) {
-        return db.rollback(() => {
-          console.error("Erro ao deletar execuções:", err);
-          res.status(500).send({
-            success: false,
-            message: "Erro ao deletar execuções",
-            error: err.message
-          });
-        });
-      }
-
-      // Depois, deletar os feriados
-      db.query("DELETE FROM feriados WHERE tarefa_id = ?", [id], (err) => {
+    db.query(
+      "DELETE FROM execucoes_tarefas WHERE tarefa_id = ?",
+      [id],
+      (err) => {
         if (err) {
           return db.rollback(() => {
-            console.error("Erro ao deletar feriados:", err);
+            console.error("Erro ao deletar execuções:", err);
             res.status(500).send({
               success: false,
-              message: "Erro ao deletar feriados",
-              error: err.message
+              message: "Erro ao deletar execuções",
+              error: err.message,
             });
           });
         }
 
-        // Por fim, deletar a tarefa
-        db.query("DELETE FROM tarefas WHERE id = ?", [id], (err, result) => {
+        // Depois, deletar os feriados
+        db.query("DELETE FROM feriados WHERE tarefa_id = ?", [id], (err) => {
           if (err) {
             return db.rollback(() => {
-              console.error("Erro ao deletar tarefa:", err);
+              console.error("Erro ao deletar feriados:", err);
               res.status(500).send({
                 success: false,
-                message: "Erro ao deletar tarefa",
-                error: err.message
+                message: "Erro ao deletar feriados",
+                error: err.message,
               });
             });
           }
 
-          // Commit da transação
-          db.commit((err) => {
+          // Por fim, deletar a tarefa
+          db.query("DELETE FROM tarefas WHERE id = ?", [id], (err, result) => {
             if (err) {
               return db.rollback(() => {
-                console.error("Erro ao finalizar transação:", err);
+                console.error("Erro ao deletar tarefa:", err);
                 res.status(500).send({
                   success: false,
-                  message: "Erro ao finalizar transação",
-                  error: err.message
+                  message: "Erro ao deletar tarefa",
+                  error: err.message,
                 });
               });
             }
 
-            res.status(200).send({
-              success: true,
-              message: "Tarefa excluída com sucesso!"
+            // Commit da transação
+            db.commit((err) => {
+              if (err) {
+                return db.rollback(() => {
+                  console.error("Erro ao finalizar transação:", err);
+                  res.status(500).send({
+                    success: false,
+                    message: "Erro ao finalizar transação",
+                    error: err.message,
+                  });
+                });
+              }
+
+              res.status(200).send({
+                success: true,
+                message: "Tarefa excluída com sucesso!",
+              });
             });
           });
         });
-      });
-    });
+      }
+    );
   });
 });
 
@@ -595,19 +615,19 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao buscar tarefas",
-        error: err.message
+        error: err.message,
       });
     }
 
     if (tarefas.length === 0) {
       return res.send({
         success: true,
-        message: "Nenhuma tarefa precisa de atualização"
+        message: "Nenhuma tarefa precisa de atualização",
       });
     }
 
     // Para cada tarefa, encontra o próximo responsável elegível
-    const processarTarefas = tarefas.map(tarefa => {
+    const processarTarefas = tarefas.map((tarefa) => {
       return new Promise((resolve, reject) => {
         const sqlProximoResponsavel = `
           SELECT u.id
@@ -648,7 +668,12 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
                 if (primeiros.length === 0) return resolve(null);
 
                 const novoResponsavel = primeiros[0].id;
-                atualizarResponsavel(tarefa.id, novoResponsavel, resolve, reject);
+                atualizarResponsavel(
+                  tarefa.id,
+                  novoResponsavel,
+                  resolve,
+                  reject
+                );
               });
             } else {
               const novoResponsavel = responsaveis[0].id;
@@ -664,15 +689,15 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
       .then(() => {
         res.send({
           success: true,
-          message: "Responsáveis atualizados com sucesso"
+          message: "Responsáveis atualizados com sucesso",
         });
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Erro ao atualizar responsáveis:", err);
         res.status(500).send({
           success: false,
           message: "Erro ao atualizar responsáveis",
-          error: err.message
+          error: err.message,
         });
       });
   });
@@ -696,67 +721,36 @@ function atualizarResponsavel(tarefaId, responsavelId, resolve, reject) {
 
 // Buscar tarefas com agendamento
 app.get("/tarefas/agendamento", (req, res) => {
+  console.log("Iniciando busca de tarefas com agendamento");
+  
+  // Query simplificada para teste
   const sql = `
     SELECT 
       t.*,
-      u.name as responsavel_nome,
-      ultima_exec.data_execucao as ultima_data_execucao,
-      ultima_exec.usuario_id as ultimo_usuario_id,
-      u2.name as ultimo_responsavel_nome,
-      EXISTS(
-        SELECT 1 
-        FROM feriados f 
-        WHERE f.tarefa_id = t.id 
-        AND f.data = CURDATE()
-      ) as tem_feriado_hoje,
       CASE
         WHEN t.esta_pausada THEN 'pausada'
         WHEN CURDATE() >= COALESCE(t.proxima_execucao, CURDATE()) THEN 'pendente'
         ELSE 'em_dia'
       END as status
     FROM tarefas t
-    LEFT JOIN users u ON t.responsavel_id = u.id
-    LEFT JOIN (
-      SELECT 
-        tarefa_id,
-        data_execucao,
-        usuario_id
-      FROM execucoes_tarefas e1
-      WHERE data_execucao = (
-        SELECT MAX(data_execucao)
-        FROM execucoes_tarefas e2
-        WHERE e2.tarefa_id = e1.tarefa_id
-      )
-    ) ultima_exec ON t.id = ultima_exec.tarefa_id
-    LEFT JOIN users u2 ON ultima_exec.usuario_id = u2.id
-    ORDER BY t.nome;
-  `;
-  
+    ORDER BY t.nome`;
+
+  console.log("SQL Query:", sql);
+
   db.query(sql, (err, results) => {
     if (err) {
-      console.error("Erro ao buscar agendamento:", err);
+      console.error("Erro na consulta SQL:", err);
       return res.status(500).send({
         success: false,
-        message: "Erro ao buscar agendamento de tarefas",
+        message: "Erro ao buscar tarefas",
         error: err.message
       });
     }
 
-    // Formatar os resultados
-    const tarefas = results.map(tarefa => ({
-      ...tarefa,
-      esta_pausada: !!tarefa.esta_pausada,
-      tem_feriado_hoje: !!tarefa.tem_feriado_hoje,
-      data_prevista: tarefa.data_prevista ? new Date(tarefa.data_prevista).toISOString().split('T')[0] : null,
-      data_execucao: tarefa.ultima_data_execucao ? new Date(tarefa.ultima_data_execucao).toISOString().split('T')[0] : null,
-      proxima_execucao: tarefa.proxima_execucao ? new Date(tarefa.proxima_execucao).toISOString().split('T')[0] : null,
-      ultimo_responsavel_id: tarefa.ultimo_usuario_id,
-      ultimo_responsavel: tarefa.ultimo_responsavel_nome
-    }));
-
+    console.log("Tarefas encontradas:", results.length);
     res.send({
       success: true,
-      tarefas: tarefas
+      tarefas: results
     });
   });
 });
@@ -767,13 +761,13 @@ app.post("/tarefas/:id/executar", (req, res) => {
   const { usuario_id, data_execucao, tipo = "manual" } = req.body;
 
   // Usar transação para garantir consistência
-  db.beginTransaction(err => {
+  db.beginTransaction((err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao iniciar transação",
-        error: err.message
+        error: err.message,
       });
     }
 
@@ -788,7 +782,7 @@ app.post("/tarefas/:id/executar", (req, res) => {
             res.status(500).send({
               success: false,
               message: "Erro ao verificar status da tarefa",
-              error: err.message
+              error: err.message,
             });
           });
         }
@@ -797,7 +791,7 @@ app.post("/tarefas/:id/executar", (req, res) => {
           return db.rollback(() => {
             res.status(404).send({
               success: false,
-              message: "Tarefa não encontrada"
+              message: "Tarefa não encontrada",
             });
           });
         }
@@ -806,13 +800,14 @@ app.post("/tarefas/:id/executar", (req, res) => {
           return db.rollback(() => {
             res.status(400).send({
               success: false,
-              message: "Não é possível executar uma tarefa pausada"
+              message: "Não é possível executar uma tarefa pausada",
             });
           });
         }
 
         const intervalo_dias = results[0].intervalo_dias;
-        const data_exec = data_execucao || new Date().toISOString().split('T')[0];
+        const data_exec =
+          data_execucao || new Date().toISOString().split("T")[0];
 
         // Registra a execução
         const sqlInsert = `
@@ -831,7 +826,7 @@ app.post("/tarefas/:id/executar", (req, res) => {
                 res.status(500).send({
                   success: false,
                   message: "Erro ao registrar execução da tarefa",
-                  error: err.message
+                  error: err.message,
                 });
               });
             }
@@ -847,20 +842,20 @@ app.post("/tarefas/:id/executar", (req, res) => {
                     res.status(500).send({
                       success: false,
                       message: "Erro ao atualizar próxima execução",
-                      error: err.message
+                      error: err.message,
                     });
                   });
                 }
 
                 // Commit da transação
-                db.commit(err => {
+                db.commit((err) => {
                   if (err) {
                     return db.rollback(() => {
                       console.error("Erro ao finalizar transação:", err);
                       res.status(500).send({
                         success: false,
                         message: "Erro ao finalizar transação",
-                        error: err.message
+                        error: err.message,
                       });
                     });
                   }
@@ -868,7 +863,7 @@ app.post("/tarefas/:id/executar", (req, res) => {
                   res.status(201).send({
                     success: true,
                     message: "Execução registrada com sucesso!",
-                    execucaoId: result.insertId
+                    execucaoId: result.insertId,
                   });
                 });
               }
@@ -897,19 +892,21 @@ app.get("/tarefas/:id/historico", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao buscar histórico de execuções",
-        error: err.message
+        error: err.message,
       });
     }
 
     // Formatar as datas
-    const historico = results.map(execucao => ({
+    const historico = results.map((execucao) => ({
       ...execucao,
-      data_execucao: new Date(execucao.data_execucao).toISOString().split('T')[0]
+      data_execucao: new Date(execucao.data_execucao)
+        .toISOString()
+        .split("T")[0],
     }));
 
     res.send({
       success: true,
-      historico: historico
+      historico: historico,
     });
   });
 });
@@ -926,13 +923,13 @@ app.get("/pessoas/ordem", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao buscar ordem das pessoas",
-        error: err.message
+        error: err.message,
       });
     }
 
     res.send({
       success: true,
-      pessoas: results
+      pessoas: results,
     });
   });
 });
@@ -954,13 +951,13 @@ app.post("/pessoas/ordem/inicializar", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao inicializar ordem das pessoas",
-        error: err.message
+        error: err.message,
       });
     }
 
     res.send({
       success: true,
-      message: "Ordem das pessoas inicializada com sucesso!"
+      message: "Ordem das pessoas inicializada com sucesso!",
     });
   });
 });
@@ -973,7 +970,7 @@ app.put("/pessoas/ordem/:id", (req, res) => {
   if (!nova_posicao || nova_posicao < 1) {
     return res.status(400).send({
       success: false,
-      message: "Nova posição inválida"
+      message: "Nova posição inválida",
     });
   }
 
@@ -987,17 +984,19 @@ app.put("/pessoas/ordem/:id", (req, res) => {
         return res.status(500).send({
           success: false,
           message: "Erro ao verificar posição atual",
-          error: err.message
+          error: err.message,
         });
       }
 
       if (results.length === 0) {
         // Se não tem posição, insere
-        const insertSql = "INSERT INTO ordem_pessoas (usuario_id, posicao) VALUES (?, ?)";
+        const insertSql =
+          "INSERT INTO ordem_pessoas (usuario_id, posicao) VALUES (?, ?)";
         db.query(insertSql, [id, nova_posicao], handleResponse);
       } else {
         // Se já tem posição, atualiza
-        const updateSql = "UPDATE ordem_pessoas SET posicao = ? WHERE usuario_id = ?";
+        const updateSql =
+          "UPDATE ordem_pessoas SET posicao = ? WHERE usuario_id = ?";
         db.query(updateSql, [nova_posicao, id], handleResponse);
       }
     }
@@ -1009,13 +1008,13 @@ app.put("/pessoas/ordem/:id", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao atualizar posição",
-        error: err.message
+        error: err.message,
       });
     }
 
     res.send({
       success: true,
-      message: "Posição atualizada com sucesso!"
+      message: "Posição atualizada com sucesso!",
     });
   }
 });
@@ -1025,10 +1024,10 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
   const { id } = req.params;
   const { direcao } = req.body; // 'cima' ou 'baixo'
 
-  if (!['cima', 'baixo'].includes(direcao)) {
+  if (!["cima", "baixo"].includes(direcao)) {
     return res.status(400).send({
       success: false,
-      message: "Direção inválida"
+      message: "Direção inválida",
     });
   }
 
@@ -1042,19 +1041,20 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
         return res.status(500).send({
           success: false,
           message: "Erro ao buscar posição atual",
-          error: err.message
+          error: err.message,
         });
       }
 
       if (results.length === 0) {
         return res.status(404).send({
           success: false,
-          message: "Pessoa não encontrada na ordem"
+          message: "Pessoa não encontrada na ordem",
         });
       }
 
       const posicaoAtual = results[0].posicao;
-      const novaPosicao = direcao === 'cima' ? posicaoAtual - 1 : posicaoAtual + 1;
+      const novaPosicao =
+        direcao === "cima" ? posicaoAtual - 1 : posicaoAtual + 1;
 
       // Verifica se existe alguém na nova posição
       db.query(
@@ -1066,27 +1066,27 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
             return res.status(500).send({
               success: false,
               message: "Erro ao verificar nova posição",
-              error: err.message
+              error: err.message,
             });
           }
 
           if (results.length === 0) {
             return res.status(400).send({
               success: false,
-              message: "Não é possível mover para esta posição"
+              message: "Não é possível mover para esta posição",
             });
           }
 
           const outroUsuarioId = results[0].usuario_id;
 
           // Troca as posições
-          db.beginTransaction(err => {
+          db.beginTransaction((err) => {
             if (err) {
               console.error("Erro ao iniciar transação:", err);
               return res.status(500).send({
                 success: false,
                 message: "Erro ao iniciar transação",
-                error: err.message
+                error: err.message,
               });
             }
 
@@ -1099,7 +1099,7 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
                     res.status(500).send({
                       success: false,
                       message: "Erro ao atualizar posição",
-                      error: err.message
+                      error: err.message,
                     });
                   });
                 }
@@ -1113,25 +1113,25 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
                         res.status(500).send({
                           success: false,
                           message: "Erro ao atualizar posição",
-                          error: err.message
+                          error: err.message,
                         });
                       });
                     }
 
-                    db.commit(err => {
+                    db.commit((err) => {
                       if (err) {
                         return db.rollback(() => {
                           res.status(500).send({
                             success: false,
                             message: "Erro ao finalizar transação",
-                            error: err.message
+                            error: err.message,
                           });
                         });
                       }
 
                       res.send({
                         success: true,
-                        message: "Posição atualizada com sucesso!"
+                        message: "Posição atualizada com sucesso!",
                       });
                     });
                   }
@@ -1151,13 +1151,13 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
 app.post("/viagens/iniciar", (req, res) => {
   const { usuario_id, data_saida } = req.body;
 
-  db.beginTransaction(err => {
+  db.beginTransaction((err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao iniciar transação",
-        error: err.message
+        error: err.message,
       });
     }
 
@@ -1171,7 +1171,7 @@ app.post("/viagens/iniciar", (req, res) => {
             res.status(500).send({
               success: false,
               message: "Erro ao atualizar status de viagem",
-              error: err.message
+              error: err.message,
             });
           });
         }
@@ -1186,18 +1186,18 @@ app.post("/viagens/iniciar", (req, res) => {
                 res.status(500).send({
                   success: false,
                   message: "Erro ao registrar viagem",
-                  error: err.message
+                  error: err.message,
                 });
               });
             }
 
-            db.commit(err => {
+            db.commit((err) => {
               if (err) {
                 return db.rollback(() => {
                   res.status(500).send({
                     success: false,
                     message: "Erro ao finalizar transação",
-                    error: err.message
+                    error: err.message,
                   });
                 });
               }
@@ -1205,7 +1205,7 @@ app.post("/viagens/iniciar", (req, res) => {
               res.send({
                 success: true,
                 message: "Viagem registrada com sucesso!",
-                viagem_id: result.insertId
+                viagem_id: result.insertId,
               });
             });
           }
@@ -1220,13 +1220,13 @@ app.post("/viagens/:id/retorno", (req, res) => {
   const { id } = req.params;
   const { data_retorno } = req.body;
 
-  db.beginTransaction(err => {
+  db.beginTransaction((err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
       return res.status(500).send({
         success: false,
         message: "Erro ao iniciar transação",
-        error: err.message
+        error: err.message,
       });
     }
 
@@ -1240,7 +1240,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
             res.status(500).send({
               success: false,
               message: "Erro ao buscar dados da viagem",
-              error: err.message
+              error: err.message,
             });
           });
         }
@@ -1249,13 +1249,16 @@ app.post("/viagens/:id/retorno", (req, res) => {
           return db.rollback(() => {
             res.status(404).send({
               success: false,
-              message: "Viagem não encontrada"
+              message: "Viagem não encontrada",
             });
           });
         }
 
         const { usuario_id, data_saida } = results[0];
-        const dias_fora = Math.ceil((new Date(data_retorno) - new Date(data_saida)) / (1000 * 60 * 60 * 24));
+        const dias_fora = Math.ceil(
+          (new Date(data_retorno) - new Date(data_saida)) /
+            (1000 * 60 * 60 * 24)
+        );
 
         // Variável para controlar quando todas as operações estão concluídas
         let operacoesConcluidas = false;
@@ -1270,7 +1273,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
                 res.status(500).send({
                   success: false,
                   message: "Erro ao registrar retorno",
-                  error: err.message
+                  error: err.message,
                 });
               });
             }
@@ -1285,7 +1288,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
                     res.status(500).send({
                       success: false,
                       message: "Erro ao atualizar status de viagem",
-                      error: err.message
+                      error: err.message,
                     });
                   });
                 }
@@ -1304,15 +1307,15 @@ app.post("/viagens/:id/retorno", (req, res) => {
                         res.status(500).send({
                           success: false,
                           message: "Erro ao verificar tarefas do dia",
-                          error: err.message
+                          error: err.message,
                         });
                       });
                     }
 
                     // Se tem tarefas hoje, passa para a próxima pessoa
                     if (tarefasHoje.length > 0) {
-                      const tarefasIds = tarefasHoje.map(t => t.id);
-                      
+                      const tarefasIds = tarefasHoje.map((t) => t.id);
+
                       // Busca próxima pessoa disponível (não em viagem) para cada tarefa
                       db.query(
                         `UPDATE tarefas t
@@ -1339,7 +1342,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
                               res.status(500).send({
                                 success: false,
                                 message: "Erro ao realocar tarefas do dia",
-                                error: err.message
+                                error: err.message,
                               });
                             });
                           }
@@ -1357,7 +1360,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
                                   res.status(500).send({
                                     success: false,
                                     message: "Erro ao agendar retorno das tarefas",
-                                    error: err.message
+                                    error: err.message,
                                   });
                                 });
                               }
@@ -1376,7 +1379,12 @@ app.post("/viagens/:id/retorno", (req, res) => {
                                      AND data_execucao < ?
                                      GROUP BY tarefa_id
                                    )`,
-                                  [usuario_id, tarefasIds, usuario_id, data_saida],
+                                  [
+                                    usuario_id,
+                                    tarefasIds,
+                                    usuario_id,
+                                    data_saida,
+                                  ],
                                   finalizeTransaction
                                 );
                               } else {
@@ -1423,18 +1431,18 @@ app.post("/viagens/:id/retorno", (req, res) => {
         res.status(500).send({
           success: false,
           message: "Erro ao finalizar operação",
-          error: err.message
+          error: err.message,
         });
       });
     }
 
-    db.commit(err => {
+    db.commit((err) => {
       if (err) {
         return db.rollback(() => {
           res.status(500).send({
             success: false,
             message: "Erro ao finalizar transação",
-            error: err.message
+            error: err.message,
           });
         });
       }
@@ -1444,7 +1452,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
         res.send({
           success: true,
           message: "Retorno registrado com sucesso!",
-          dias_fora: dias_fora
+          dias_fora: dias_fora,
         });
       } else {
         operacoesConcluidas = true;
@@ -1456,7 +1464,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
 // Listar viagens de um usuário
 app.get("/viagens/usuario/:id", (req, res) => {
   const { id } = req.params;
-  
+
   const sql = `
     SELECT v.*, u.name as nome_usuario
     FROM viagens v
@@ -1470,17 +1478,19 @@ app.get("/viagens/usuario/:id", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao buscar viagens",
-        error: err.message
+        error: err.message,
       });
     }
 
     res.send({
       success: true,
-      viagens: results.map(viagem => ({
+      viagens: results.map((viagem) => ({
         ...viagem,
-        data_saida: new Date(viagem.data_saida).toISOString().split('T')[0],
-        data_retorno: viagem.data_retorno ? new Date(viagem.data_retorno).toISOString().split('T')[0] : null
-      }))
+        data_saida: new Date(viagem.data_saida).toISOString().split("T")[0],
+        data_retorno: viagem.data_retorno
+          ? new Date(viagem.data_retorno).toISOString().split("T")[0]
+          : null,
+      })),
     });
   });
 });
@@ -1510,7 +1520,7 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
         success: true,
         em_viagem: true,
         tarefas_hoje: [],
-        historico: []
+        historico: [],
       });
     }
 
@@ -1528,7 +1538,7 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
         AND CURDATE() >= COALESCE(t.proxima_execucao, CURDATE())
         ORDER BY t.nome
       `;
-      
+
       db.query(sql, [id], (err, results) => {
         if (err) reject(err);
         else resolve(results);
@@ -1543,15 +1553,19 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
           GROUP_CONCAT(t.nome ORDER BY t.nome SEPARATOR ', ') as tarefas
         FROM execucoes_tarefas e
         JOIN tarefas t ON e.tarefa_id = t.id
-        WHERE e.usuario_id = ?
+        WHERE e.responsavel_id = ?
         AND e.data_execucao >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
         GROUP BY e.data_execucao
         ORDER BY e.data_execucao DESC
       `;
 
       db.query(sql, [id], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
+        if (err) {
+          console.error("Erro na query de histórico:", err);
+          reject(err);
+        } else {
+          resolve(results);
+        }
       });
     });
 
@@ -1559,15 +1573,14 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
       success: true,
       em_viagem: false,
       tarefas_hoje: tarefasHoje,
-      historico: historico
+      historico: historico,
     });
-
   } catch (error) {
     console.error("Erro ao buscar tarefas do usuário:", error);
     res.status(500).send({
       success: false,
       message: "Erro ao buscar tarefas do usuário",
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -1586,7 +1599,7 @@ app.get("/pessoas/ordem", (req, res) => {
     }
     res.send({
       success: true,
-      pessoas: results
+      pessoas: results,
     });
   });
 });
@@ -1634,7 +1647,7 @@ const atualizarResponsaveisPorOrdem = async () => {
         const atualizacoes = tarefas.map((tarefa, index) => {
           const usuarioIndex = index % usuarios.length;
           const usuarioId = usuarios[usuarioIndex].id;
-          
+
           return new Promise((resolveUpdate, rejectUpdate) => {
             db.query(
               "UPDATE tarefas SET responsavel_id = ? WHERE id = ?",
@@ -1649,7 +1662,7 @@ const atualizarResponsaveisPorOrdem = async () => {
 
         Promise.all(atualizacoes)
           .then(() => resolve())
-          .catch(err => reject(err));
+          .catch((err) => reject(err));
       });
     });
   });
@@ -1657,11 +1670,11 @@ const atualizarResponsaveisPorOrdem = async () => {
 
 app.post("/pessoas/reordenar", (req, res) => {
   const { ordem } = req.body;
-  
+
   if (!ordem || !Array.isArray(ordem)) {
     res.status(400).send({
       success: false,
-      message: "Ordem inválida"
+      message: "Ordem inválida",
     });
     return;
   }
@@ -1673,24 +1686,26 @@ app.post("/pessoas/reordenar", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao iniciar atualização da ordem",
-        error: err.message
+        error: err.message,
       });
     }
 
     try {
       // Atualiza a ordem de cada pessoa
-      await Promise.all(ordem.map((id, index) => {
-        return new Promise((resolve, reject) => {
-          db.query(
-            "UPDATE users SET ordem = ? WHERE id = ?",
-            [index + 1, id],
-            (err) => {
-              if (err) reject(err);
-              else resolve();
-            }
-          );
-        });
-      }));
+      await Promise.all(
+        ordem.map((id, index) => {
+          return new Promise((resolve, reject) => {
+            db.query(
+              "UPDATE users SET ordem = ? WHERE id = ?",
+              [index + 1, id],
+              (err) => {
+                if (err) reject(err);
+                else resolve();
+              }
+            );
+          });
+        })
+      );
 
       // Atualiza os responsáveis das tarefas
       await atualizarResponsaveisPorOrdem();
@@ -1703,24 +1718,23 @@ app.post("/pessoas/reordenar", (req, res) => {
             res.status(500).send({
               success: false,
               message: "Erro ao salvar alterações",
-              error: err.message
+              error: err.message,
             });
           });
         }
 
         res.send({
           success: true,
-          message: "Ordem atualizada e responsáveis redistribuídos com sucesso"
+          message: "Ordem atualizada e responsáveis redistribuídos com sucesso",
         });
       });
-
     } catch (error) {
       return db.rollback(() => {
         console.error("Erro durante a atualização:", error);
         res.status(500).send({
           success: false,
           message: "Erro ao atualizar ordem",
-          error: error.message
+          error: error.message,
         });
       });
     }
@@ -1728,97 +1742,98 @@ app.post("/pessoas/reordenar", (req, res) => {
 });
 
 /* Rotas para gerenciamento de feriados */
-app.post('/feriados', (req, res) => {
+app.post("/feriados", (req, res) => {
   const { data, tarefa_id } = req.body;
-  
-  const sql = 'INSERT INTO feriados (data, tarefa_id) VALUES (?, ?)';
+
+  const sql = "INSERT INTO feriados (data, tarefa_id) VALUES (?, ?)";
   db.query(sql, [data, tarefa_id], (err, result) => {
     if (err) {
-      console.error('Erro ao cadastrar feriado:', err);
+      console.error("Erro ao cadastrar feriado:", err);
       res.status(500).send({
         success: false,
-        message: 'Erro ao cadastrar feriado',
-        error: err.message
+        message: "Erro ao cadastrar feriado",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      message: 'Feriado cadastrado com sucesso!'
+      message: "Feriado cadastrado com sucesso!",
     });
   });
 });
 
-app.get('/feriados', (req, res) => {
-  const sql = 'SELECT f.*, t.nome as tarefa_nome FROM feriados f LEFT JOIN tarefas t ON f.tarefa_id = t.id ORDER BY f.data';
+app.get("/feriados", (req, res) => {
+  const sql =
+    "SELECT f.*, t.nome as tarefa_nome FROM feriados f LEFT JOIN tarefas t ON f.tarefa_id = t.id ORDER BY f.data";
   db.query(sql, (err, results) => {
     if (err) {
-      console.error('Erro ao buscar feriados:', err);
+      console.error("Erro ao buscar feriados:", err);
       res.status(500).send({
         success: false,
-        message: 'Erro ao buscar feriados',
-        error: err.message
+        message: "Erro ao buscar feriados",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      feriados: results
+      feriados: results,
     });
   });
 });
 
-app.delete('/feriados/:id', (req, res) => {
+app.delete("/feriados/:id", (req, res) => {
   const { id } = req.params;
-  
-  const sql = 'DELETE FROM feriados WHERE id = ?';
+
+  const sql = "DELETE FROM feriados WHERE id = ?";
   db.query(sql, [id], (err, result) => {
     if (err) {
-      console.error('Erro ao remover feriado:', err);
+      console.error("Erro ao remover feriado:", err);
       res.status(500).send({
         success: false,
-        message: 'Erro ao remover feriado',
-        error: err.message
+        message: "Erro ao remover feriado",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      message: 'Feriado removido com sucesso!'
+      message: "Feriado removido com sucesso!",
     });
   });
 });
 
 // Remover feriado específico de uma tarefa em uma data específica
-app.delete('/feriados/:tarefa_id/:data', (req, res) => {
+app.delete("/feriados/:tarefa_id/:data", (req, res) => {
   const { tarefa_id, data } = req.params;
-  
-  const sql = 'DELETE FROM feriados WHERE tarefa_id = ? AND data = ?';
+
+  const sql = "DELETE FROM feriados WHERE tarefa_id = ? AND data = ?";
   db.query(sql, [tarefa_id, data], (err, result) => {
     if (err) {
-      console.error('Erro ao remover feriado:', err);
+      console.error("Erro ao remover feriado:", err);
       res.status(500).send({
         success: false,
-        message: 'Erro ao remover feriado',
-        error: err.message
+        message: "Erro ao remover feriado",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      message: 'Feriado removido com sucesso!'
+      message: "Feriado removido com sucesso!",
     });
   });
 });
 
 /* Rota para verificar acúmulo de lixo */
-app.post('/tarefas/lixo/status', (req, res) => {
+app.post("/tarefas/lixo/status", (req, res) => {
   const { tarefa_id } = req.body;
-  
+
   // Verifica se é domingo ou feriado
   const hoje = new Date();
   const sql = `
@@ -1827,110 +1842,111 @@ app.post('/tarefas/lixo/status', (req, res) => {
     WHERE data = CURDATE() 
     AND tarefa_id = ?
   `;
-  
+
   db.query(sql, [tarefa_id], (err, results) => {
     if (err) {
       res.status(500).send({
         success: false,
-        message: 'Erro ao verificar status do lixo',
-        error: err.message
+        message: "Erro ao verificar status do lixo",
+        error: err.message,
       });
       return;
     }
-    
+
     const ehFeriado = results[0].count > 0;
     const ehDomingo = hoje.getDay() === 0;
-    
+
     if (ehFeriado || ehDomingo) {
       res.send({
         success: true,
         deve_pular: true,
-        motivo: ehDomingo ? 'domingo' : 'feriado'
+        motivo: ehDomingo ? "domingo" : "feriado",
       });
     } else {
       res.send({
         success: true,
-        deve_pular: false
+        deve_pular: false,
       });
     }
   });
 });
 
 /* Rota para notificar responsável sobre ajuda */
-app.post('/tarefas/lixo/notificar', (req, res) => {
+app.post("/tarefas/lixo/notificar", (req, res) => {
   const { usuario_id, motivo } = req.body;
-  
+
   // Aqui você implementaria a lógica de notificação
   // Por exemplo, salvando em uma tabela de notificações
   const sql = `
     INSERT INTO notificacoes (usuario_id, mensagem, data_criacao)
     VALUES (?, ?, NOW())
   `;
-  
-  const mensagem = motivo === 'domingo' ?
-    'Você quer que outra pessoa te ajude na segunda?' :
-    'Quer que outra pessoa tire com você amanhã?';
-  
+
+  const mensagem =
+    motivo === "domingo"
+      ? "Você quer que outra pessoa te ajude na segunda?"
+      : "Quer que outra pessoa tire com você amanhã?";
+
   db.query(sql, [usuario_id, mensagem], (err, result) => {
     if (err) {
       res.status(500).send({
         success: false,
-        message: 'Erro ao criar notificação',
-        error: err.message
+        message: "Erro ao criar notificação",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      message: 'Notificação criada com sucesso!',
-      notificacao_id: result.insertId
+      message: "Notificação criada com sucesso!",
+      notificacao_id: result.insertId,
     });
   });
 });
 
 // Remover feriados de uma tarefa específica
-app.delete('/feriados/tarefa/:tarefaId', (req, res) => {
+app.delete("/feriados/tarefa/:tarefaId", (req, res) => {
   const { tarefaId } = req.params;
-  
-  const sql = 'DELETE FROM feriados WHERE tarefa_id = ?';
+
+  const sql = "DELETE FROM feriados WHERE tarefa_id = ?";
   db.query(sql, [tarefaId], (err, result) => {
     if (err) {
-      console.error('Erro ao remover feriados da tarefa:', err);
+      console.error("Erro ao remover feriados da tarefa:", err);
       res.status(500).send({
         success: false,
-        message: 'Erro ao remover feriados da tarefa',
-        error: err.message
+        message: "Erro ao remover feriados da tarefa",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      message: 'Feriados removidos com sucesso!'
+      message: "Feriados removidos com sucesso!",
     });
   });
 });
 
 // Remover execuções de uma tarefa específica
-app.delete('/execucoes/tarefa/:tarefaId', (req, res) => {
+app.delete("/execucoes/tarefa/:tarefaId", (req, res) => {
   const { tarefaId } = req.params;
-  
-  const sql = 'DELETE FROM execucoes_tarefas WHERE tarefa_id = ?';
+
+  const sql = "DELETE FROM execucoes_tarefas WHERE tarefa_id = ?";
   db.query(sql, [tarefaId], (err, result) => {
     if (err) {
-      console.error('Erro ao remover execuções da tarefa:', err);
+      console.error("Erro ao remover execuções da tarefa:", err);
       res.status(500).send({
         success: false,
-        message: 'Erro ao remover execuções da tarefa',
-        error: err.message
+        message: "Erro ao remover execuções da tarefa",
+        error: err.message,
       });
       return;
     }
-    
+
     res.send({
       success: true,
-      message: 'Execuções removidas com sucesso!'
+      message: "Execuções removidas com sucesso!",
     });
   });
 });
@@ -1943,7 +1959,7 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
   if (!novo_responsavel_id) {
     return res.status(400).send({
       success: false,
-      message: "ID do novo responsável é obrigatório"
+      message: "ID do novo responsável é obrigatório",
     });
   }
 
@@ -1960,21 +1976,21 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao verificar usuário",
-        error: err.message
+        error: err.message,
       });
     }
 
     if (usuarios.length === 0) {
       return res.status(404).send({
         success: false,
-        message: "Usuário não encontrado"
+        message: "Usuário não encontrado",
       });
     }
 
     if (usuarios[0].em_viagem) {
       return res.status(400).send({
         success: false,
-        message: "Não é possível atribuir tarefa a um usuário em viagem"
+        message: "Não é possível atribuir tarefa a um usuário em viagem",
       });
     }
 
@@ -1991,20 +2007,20 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
         return res.status(500).send({
           success: false,
           message: "Erro ao reatribuir tarefa",
-          error: err.message
+          error: err.message,
         });
       }
 
       if (result.affectedRows === 0) {
         return res.status(404).send({
           success: false,
-          message: "Tarefa não encontrada"
+          message: "Tarefa não encontrada",
         });
       }
 
       res.send({
         success: true,
-        message: "Tarefa reatribuída com sucesso"
+        message: "Tarefa reatribuída com sucesso",
       });
     });
   });

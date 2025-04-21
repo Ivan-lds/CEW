@@ -14,9 +14,9 @@ import {
 import axios from "axios";
 import { ScrollView } from "react-native-gesture-handler";
 import React from "react";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FontAwesome } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { FontAwesome } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 
 interface Tarefa {
   id: number;
@@ -30,7 +30,7 @@ interface Tarefa {
   ultimo_responsavel: string | null;
   ultimo_responsavel_id: number | null;
   tem_feriado_hoje: boolean;
-  status: 'pendente' | 'em_dia' | 'pausada';
+  status: "pendente" | "em_dia" | "pausada";
 }
 
 const Admin = ({ navigation }: { navigation: any }) => {
@@ -45,19 +45,23 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [userData, setUserData] = useState({
     name: "",
     email: "",
-    departamento: ""
+    departamento: "",
   });
-  const [isGerenciarTarefasVisible, setIsGerenciarTarefasVisible] = useState(false);
+  const [isGerenciarTarefasVisible, setIsGerenciarTarefasVisible] =
+    useState(false);
   const [feriados, setFeriados] = useState([]);
   const [novoFeriado, setNovoFeriado] = useState({ data: "", tarefa_id: null });
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
-  const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(null);
+  const [tarefaSelecionada, setTarefaSelecionada] = useState<Tarefa | null>(
+    null
+  );
   const [intervaloTemp, setIntervaloTemp] = useState("");
   const [editarIntervaloVisible, setEditarIntervaloVisible] = useState(false);
   const [novaTarefaVisible, setNovaTarefaVisible] = useState(false);
   const [novaTarefaNome, setNovaTarefaNome] = useState("");
   const [novaTarefaIntervalo, setNovaTarefaIntervalo] = useState("");
-  const [isGerenciarPessoasVisible, setIsGerenciarPessoasVisible] = useState(false);
+  const [isGerenciarPessoasVisible, setIsGerenciarPessoasVisible] =
+    useState(false);
   const [pessoas, setPessoas] = useState<any[]>([]);
   const [pessoaSelecionada, setPessoaSelecionada] = useState<any>(null);
   const [diasViagem, setDiasViagem] = useState("");
@@ -66,10 +70,14 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [viagemAtual, setViagemAtual] = useState<any>(null);
   const [pessoasOrdenadas, setPessoasOrdenadas] = useState<any[]>([]);
   const [isOrdenacaoAtiva, setIsOrdenacaoAtiva] = useState(false);
-  const [isReatribuirModalVisible, setIsReatribuirModalVisible] = useState(false);
-  const [tarefaParaReatribuir, setTarefaParaReatribuir] = useState<Tarefa | null>(null);
+  const [isReatribuirModalVisible, setIsReatribuirModalVisible] =
+    useState(false);
+  const [tarefaParaReatribuir, setTarefaParaReatribuir] =
+    useState<Tarefa | null>(null);
   const [usuariosDisponiveis, setUsuariosDisponiveis] = useState<any[]>([]);
-  const [novoResponsavelId, setNovoResponsavelId] = useState<number | null>(null);
+  const [novoResponsavelId, setNovoResponsavelId] = useState<number | null>(
+    null
+  );
 
   // Carregar pessoas quando o componente montar
   useEffect(() => {
@@ -97,10 +105,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
     try {
       const response = await axios.get("http://192.168.1.55:3001/user-data", {
         params: {
-          email: userData.email
-        }
+          email: userData.email,
+        },
       });
-      
+
       if (response.data.success) {
         setUserData(response.data.user);
       }
@@ -125,7 +133,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
     Alert.alert(
       "Tema Alterado",
       isDarkTheme ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
-    );  
+    );
   };
 
   // Funções para interagir com usuários
@@ -186,10 +194,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const handleRemoveUser = async () => {
     try {
       console.log("Iniciando remoção do usuário:", selectedUser.name);
-      const response = await axios.post("http://192.168.1.55:3001/remove-user", {
-        name: selectedUser.name,
-      });
-      
+      const response = await axios.post(
+        "http://192.168.1.55:3001/remove-user",
+        {
+          name: selectedUser.name,
+        }
+      );
+
       if (response.data.success) {
         console.log("Usuário removido com sucesso:", selectedUser.name);
         Alert.alert("Sucesso", `${selectedUser.name} foi removido.`);
@@ -197,14 +208,19 @@ const Admin = ({ navigation }: { navigation: any }) => {
         setIsModalVisible(false);
       } else {
         console.error("Erro na resposta do servidor:", response.data);
-        Alert.alert("Erro", response.data.message || "Não foi possível remover o usuário.");
+        Alert.alert(
+          "Erro",
+          response.data.message || "Não foi possível remover o usuário."
+        );
       }
     } catch (error) {
       console.error("Erro ao remover usuário:", error);
       console.error("Detalhes do erro:", error.response?.data);
       Alert.alert(
         "Erro",
-        error.response?.data?.message || error.response?.data?.error || "Não foi possível remover o usuário."
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Não foi possível remover o usuário."
       );
     }
   };
@@ -239,79 +255,86 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Buscar tarefas
   const buscarFeriados = async () => {
     try {
-      const response = await axios.get('http://192.168.1.55:3001/feriados');
+      const response = await axios.get("http://192.168.1.55:3001/feriados");
       if (response.data.success) {
         setFeriados(response.data.feriados);
       }
     } catch (error) {
-      console.error('Erro ao buscar feriados:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os feriados.');
+      console.error("Erro ao buscar feriados:", error);
+      Alert.alert("Erro", "Não foi possível carregar os feriados.");
     }
   };
 
   const adicionarFeriadoHoje = async (tarefaId: number) => {
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = new Date().toISOString().split("T")[0];
     try {
-      console.log('Adicionando feriado para tarefa:', tarefaId);
-      const response = await axios.post('http://192.168.1.55:3001/feriados', {
+      console.log("Adicionando feriado para tarefa:", tarefaId);
+      const response = await axios.post("http://192.168.1.55:3001/feriados", {
         data: hoje,
-        tarefa_id: tarefaId
+        tarefa_id: tarefaId,
       });
       if (response.data.success) {
-        console.log('Feriado adicionado com sucesso');
+        console.log("Feriado adicionado com sucesso");
         // Atualiza o estado imediatamente
-        setTarefas(prevTarefas => 
-          prevTarefas.map(tarefa => 
-            tarefa.id === tarefaId 
+        setTarefas((prevTarefas) =>
+          prevTarefas.map((tarefa) =>
+            tarefa.id === tarefaId
               ? { ...tarefa, tem_feriado_hoje: true }
               : tarefa
           )
         );
-        Alert.alert('Sucesso', 'Feriado registrado para hoje com sucesso!');
+        Alert.alert("Sucesso", "Feriado registrado para hoje com sucesso!");
       }
     } catch (error) {
-      console.error('Erro ao cadastrar feriado:', error);
-      Alert.alert('Erro', 'Não foi possível registrar o feriado.');
+      console.error("Erro ao cadastrar feriado:", error);
+      Alert.alert("Erro", "Não foi possível registrar o feriado.");
     }
   };
 
   const adicionarFeriado = async () => {
     if (!novoFeriado.data || !novoFeriado.tarefa_id) {
-      Alert.alert('Erro', 'Por favor, selecione uma data e uma tarefa.');
+      Alert.alert("Erro", "Por favor, selecione uma data e uma tarefa.");
       return;
     }
 
     try {
-      const response = await axios.post('http://192.168.1.55:3001/feriados', novoFeriado);
+      const response = await axios.post(
+        "http://192.168.1.55:3001/feriados",
+        novoFeriado
+      );
       if (response.data.success) {
-        Alert.alert('Sucesso', 'Feriado cadastrado com sucesso!');
+        Alert.alert("Sucesso", "Feriado cadastrado com sucesso!");
         setNovoFeriado({ data: "", tarefa_id: null });
         buscarFeriados();
         buscarTarefas();
       }
     } catch (error) {
-      console.error('Erro ao cadastrar feriado:', error);
-      Alert.alert('Erro', 'Não foi possível cadastrar o feriado.');
+      console.error("Erro ao cadastrar feriado:", error);
+      Alert.alert("Erro", "Não foi possível cadastrar o feriado.");
     }
   };
 
   const removerFeriado = async (id) => {
     try {
-      const response = await axios.delete(`http://192.168.1.55:3001/feriados/${id}`);
+      const response = await axios.delete(
+        `http://192.168.1.55:3001/feriados/${id}`
+      );
       if (response.data.success) {
-        Alert.alert('Sucesso', 'Feriado removido com sucesso!');
+        Alert.alert("Sucesso", "Feriado removido com sucesso!");
         buscarFeriados();
         buscarTarefas();
       }
     } catch (error) {
-      console.error('Erro ao remover feriado:', error);
-      Alert.alert('Erro', 'Não foi possível remover o feriado.');
+      console.error("Erro ao remover feriado:", error);
+      Alert.alert("Erro", "Não foi possível remover o feriado.");
     }
   };
 
   const buscarTarefas = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/tarefas/agendamento");
+      const response = await axios.get(
+        "http://192.168.1.55:3001/tarefas/agendamento"
+      );
       if (response.data.success) {
         setTarefas(response.data.tarefas);
       }
@@ -323,33 +346,23 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   // Criar nova tarefa
   const criarTarefa = async () => {
-    if (!novaTarefaNome || !novaTarefaIntervalo) {
-      Alert.alert("Erro", "Por favor, preencha todos os campos.");
-      return;
-    }
-
-    const intervalo = parseInt(novaTarefaIntervalo);
-    if (isNaN(intervalo) || intervalo < 1) {
-      Alert.alert("Erro", "O intervalo deve ser um número maior que zero.");
-      return;
-    }
-
     try {
+      console.log("Criando tarefa:", {
+        nome: novaTarefaNome,
+        intervalo: novaTarefaIntervalo,
+      });
       const response = await axios.post("http://192.168.1.55:3001/tarefas", {
         nome: novaTarefaNome,
-        intervalo_dias: intervalo
+        intervalo_dias: parseInt(novaTarefaIntervalo),
       });
+      console.log("Resposta da criação:", response.data);
 
       if (response.data.success) {
-        Alert.alert("Sucesso", "Tarefa criada com sucesso!");
-        setNovaTarefaNome("");
-        setNovaTarefaIntervalo("");
-        setNovaTarefaVisible(false);
-        buscarTarefas();
+        await buscarTarefas(); // Adicione await aqui
+        console.log("Tarefas após busca:", tarefas);
       }
     } catch (error) {
-      console.error("Erro ao criar tarefa:", error);
-      Alert.alert("Erro", "Não foi possível criar a tarefa.");
+      console.error("Erro completo:", error);
     }
   };
 
@@ -414,7 +427,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para buscar pessoas
   const buscarPessoas = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/pessoas/ordem");
+      const response = await axios.get(
+        "http://192.168.1.55:3001/pessoas/ordem"
+      );
       if (response.data.success) {
         const pessoasOrdenadas = response.data.pessoas;
         setPessoas(pessoasOrdenadas);
@@ -426,17 +441,23 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  const moverPessoa = async (id: number, direcao: 'cima' | 'baixo') => {
-    const index = pessoasOrdenadas.findIndex(p => p.id === id);
+  const moverPessoa = async (id: number, direcao: "cima" | "baixo") => {
+    const index = pessoasOrdenadas.findIndex((p) => p.id === id);
     if (index === -1) return;
 
     const novaLista = [...pessoasOrdenadas];
-    if (direcao === 'cima' && index > 0) {
+    if (direcao === "cima" && index > 0) {
       // Troca com o item anterior
-      [novaLista[index], novaLista[index - 1]] = [novaLista[index - 1], novaLista[index]];
-    } else if (direcao === 'baixo' && index < novaLista.length - 1) {
+      [novaLista[index], novaLista[index - 1]] = [
+        novaLista[index - 1],
+        novaLista[index],
+      ];
+    } else if (direcao === "baixo" && index < novaLista.length - 1) {
       // Troca com o próximo item
-      [novaLista[index], novaLista[index + 1]] = [novaLista[index + 1], novaLista[index]];
+      [novaLista[index], novaLista[index + 1]] = [
+        novaLista[index + 1],
+        novaLista[index],
+      ];
     } else {
       return; // Não pode mover mais
     }
@@ -446,7 +467,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
     try {
       await axios.post("http://192.168.1.55:3001/pessoas/reordenar", {
-        ordem: novaLista.map(pessoa => pessoa.id)
+        ordem: novaLista.map((pessoa) => pessoa.id),
       });
     } catch (error) {
       console.error("Erro ao reordenar pessoas:", error);
@@ -457,10 +478,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para iniciar viagem
   const iniciarViagem = async (usuarioId: number) => {
     try {
-      const response = await axios.post("http://192.168.1.55:3001/viagens/iniciar", {
-        usuario_id: usuarioId,
-        data_saida: new Date().toISOString().split('T')[0]
-      });
+      const response = await axios.post(
+        "http://192.168.1.55:3001/viagens/iniciar",
+        {
+          usuario_id: usuarioId,
+          data_saida: new Date().toISOString().split("T")[0],
+        }
+      );
 
       if (response.data.success) {
         Alert.alert("Sucesso", "Viagem iniciada com sucesso!");
@@ -475,8 +499,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const formatDateForDisplay = (date: string) => {
     // Converte yyyy-mm-dd para dd-mm-yyyy
-    if (!date) return '';
-    const [year, month, day] = date.split('-');
+    if (!date) return "";
+    const [year, month, day] = date.split("-");
     return `${day}-${month}-${year}`;
   };
 
@@ -486,17 +510,23 @@ const Admin = ({ navigation }: { navigation: any }) => {
       Alert.alert("Erro", "Por favor, preencha a data de retorno.");
       return;
     }
-    
+
     // Converte dd-mm-yyyy para yyyy-mm-dd antes de enviar
     const formattedDate = convertDateToDatabaseFormat(dataRetorno);
 
     try {
-      const response = await axios.post(`http://192.168.1.55:3001/viagens/${pessoaSelecionada.viagem_atual_id}/retorno`, {
-        data_retorno: formattedDate
-      });
+      const response = await axios.post(
+        `http://192.168.1.55:3001/viagens/${pessoaSelecionada.viagem_atual_id}/retorno`,
+        {
+          data_retorno: formattedDate,
+        }
+      );
 
       if (response.data.success) {
-        Alert.alert("Sucesso", `Retorno registrado com sucesso! Dias fora: ${response.data.dias_fora}`);
+        Alert.alert(
+          "Sucesso",
+          `Retorno registrado com sucesso! Dias fora: ${response.data.dias_fora}`
+        );
         setIsRetornoModalVisible(false);
         setDataRetorno("");
         buscarPessoas();
@@ -509,48 +539,53 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   // Remover feriado de hoje
   const removerFeriadoHoje = async (tarefaId: number) => {
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = new Date().toISOString().split("T")[0];
     try {
-      console.log('Removendo feriado da tarefa:', tarefaId);
-      const response = await axios.delete(`http://192.168.1.55:3001/feriados/${tarefaId}/${hoje}`);
+      console.log("Removendo feriado da tarefa:", tarefaId);
+      const response = await axios.delete(
+        `http://192.168.1.55:3001/feriados/${tarefaId}/${hoje}`
+      );
       if (response.data.success) {
-        console.log('Feriado removido com sucesso');
+        console.log("Feriado removido com sucesso");
         // Atualiza o estado imediatamente
-        setTarefas(prevTarefas => 
-          prevTarefas.map(tarefa => 
-            tarefa.id === tarefaId 
+        setTarefas((prevTarefas) =>
+          prevTarefas.map((tarefa) =>
+            tarefa.id === tarefaId
               ? { ...tarefa, tem_feriado_hoje: false }
               : tarefa
           )
         );
-        Alert.alert('Sucesso', 'Feriado removido com sucesso!');
+        Alert.alert("Sucesso", "Feriado removido com sucesso!");
       }
     } catch (error) {
-      console.error('Erro ao remover feriado:', error);
-      Alert.alert('Erro', 'Não foi possível remover o feriado.');
+      console.error("Erro ao remover feriado:", error);
+      Alert.alert("Erro", "Não foi possível remover o feriado.");
     }
   };
 
   // Adiciona um useEffect para monitorar mudanças no estado das tarefas
   useEffect(() => {
-    console.log('Estado das tarefas atualizado:', tarefas.map(t => ({
-      id: t.id,
-      nome: t.nome,
-      tem_feriado_hoje: t.tem_feriado_hoje
-    })));
+    console.log(
+      "Estado das tarefas atualizado:",
+      tarefas.map((t) => ({
+        id: t.id,
+        nome: t.nome,
+        tem_feriado_hoje: t.tem_feriado_hoje,
+      }))
+    );
   }, [tarefas]);
 
   useEffect(() => {
     const loadUserData = async () => {
-      const email = await AsyncStorage.getItem('userEmail');
-      const name = await AsyncStorage.getItem('userName');
-      const department = await AsyncStorage.getItem('userDepartment');
-      
+      const email = await AsyncStorage.getItem("userEmail");
+      const name = await AsyncStorage.getItem("userName");
+      const department = await AsyncStorage.getItem("userDepartment");
+
       if (email && name) {
         setUserData({
           email,
           name,
-          departamento: department || ''
+          departamento: department || "",
         });
       }
     };
@@ -582,7 +617,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const buscarUsuariosDisponiveis = async () => {
     try {
       const response = await axios.get("http://192.168.1.55:3001/users");
-      const usuariosAtivos = response.data.filter(user => !user.em_viagem);
+      const usuariosAtivos = response.data.filter((user) => !user.em_viagem);
       setUsuariosDisponiveis(usuariosAtivos);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
@@ -626,8 +661,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
         {/* Seção: Dados Pessoais */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Dados Pessoais</Text>
-          <TouchableOpacity 
-            style={styles.button} 
+          <TouchableOpacity
+            style={styles.button}
             onPress={() => setIsProfileModalVisible(true)}
           >
             <Text style={styles.buttonText}>Editar Perfil</Text>
@@ -649,17 +684,17 @@ const Admin = ({ navigation }: { navigation: any }) => {
               <View style={styles.infoContainer}>
                 <Text style={styles.label}>Nome:</Text>
                 <Text style={styles.value}>{userData.name}</Text>
-                
+
                 <Text style={styles.label}>Email:</Text>
                 <Text style={styles.value}>{userData.email}</Text>
-                
+
                 <Text style={styles.label}>Departamento:</Text>
                 <Text style={styles.value}>{userData.departamento}</Text>
               </View>
 
               {/* Botões de Ação */}
               <View style={styles.buttonContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.changePasswordButton]}
                   onPress={() => {
                     setIsProfileModalVisible(false);
@@ -669,7 +704,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                   <Text style={styles.buttonText}>Alterar Senha</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.closeButton]}
                   onPress={() => setIsProfileModalVisible(false)}
                 >
@@ -792,7 +827,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     style={[styles.roleButton, styles.adminButton]}
                     onPress={() => handleSetAdmin("admin")}
                   >
-                    <Text style={styles.roleButtonText}>Definir como Admin</Text>
+                    <Text style={styles.roleButtonText}>
+                      Definir como Admin
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.roleButton, styles.userButton]}
@@ -829,11 +866,14 @@ const Admin = ({ navigation }: { navigation: any }) => {
         {/* Seção: Lista de Pessoas */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>👥 Lista de Pessoas</Text>
-          
+
           <View style={styles.listHeader}>
             <Text style={styles.listTitle}>Pessoas Cadastradas</Text>
             <TouchableOpacity
-              style={[styles.smallButton, isOrdenacaoAtiva && styles.activeButton]}
+              style={[
+                styles.smallButton,
+                isOrdenacaoAtiva && styles.activeButton,
+              ]}
               onPress={() => setIsOrdenacaoAtiva(!isOrdenacaoAtiva)}
             >
               <Text style={styles.buttonText}>
@@ -843,39 +883,58 @@ const Admin = ({ navigation }: { navigation: any }) => {
           </View>
 
           <FlatList
-              data={isOrdenacaoAtiva ? pessoasOrdenadas : pessoas}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item, index }) => (
-                <View style={styles.pessoaItem}>
-                  <View style={styles.pessoaInfo}>
-                    <Text style={styles.pessoaNome}>{item.name}</Text>
-                    {item.departamento && (
-                      <Text style={styles.pessoaDepartamento}>
-                        {item.departamento}
-                      </Text>
-                    )}
-                  </View>
-                  {isOrdenacaoAtiva && (
-                    <View style={styles.setasContainer}>
-                      <TouchableOpacity
-                        style={[styles.setaButton, index === 0 && styles.setaDisabled]}
-                        onPress={() => moverPessoa(item.id, 'cima')}
-                        disabled={index === 0}
-                      >
-                        <FontAwesome name="arrow-up" size={20} color={index === 0 ? "#ccc" : "#007bff"} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.setaButton, index === pessoasOrdenadas.length - 1 && styles.setaDisabled]}
-                        onPress={() => moverPessoa(item.id, 'baixo')}
-                        disabled={index === pessoasOrdenadas.length - 1}
-                      >
-                        <FontAwesome name="arrow-down" size={20} color={index === pessoasOrdenadas.length - 1 ? "#ccc" : "#007bff"} />
-                      </TouchableOpacity>
-                    </View>
+            data={isOrdenacaoAtiva ? pessoasOrdenadas : pessoas}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item, index }) => (
+              <View style={styles.pessoaItem}>
+                <View style={styles.pessoaInfo}>
+                  <Text style={styles.pessoaNome}>{item.name}</Text>
+                  {item.departamento && (
+                    <Text style={styles.pessoaDepartamento}>
+                      {item.departamento}
+                    </Text>
                   )}
                 </View>
-              )}
-            />
+                {isOrdenacaoAtiva && (
+                  <View style={styles.setasContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.setaButton,
+                        index === 0 && styles.setaDisabled,
+                      ]}
+                      onPress={() => moverPessoa(item.id, "cima")}
+                      disabled={index === 0}
+                    >
+                      <FontAwesome
+                        name="arrow-up"
+                        size={20}
+                        color={index === 0 ? "#ccc" : "#007bff"}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.setaButton,
+                        index === pessoasOrdenadas.length - 1 &&
+                          styles.setaDisabled,
+                      ]}
+                      onPress={() => moverPessoa(item.id, "baixo")}
+                      disabled={index === pessoasOrdenadas.length - 1}
+                    >
+                      <FontAwesome
+                        name="arrow-down"
+                        size={20}
+                        color={
+                          index === pessoasOrdenadas.length - 1
+                            ? "#ccc"
+                            : "#007bff"
+                        }
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+          />
         </View>
 
         {/* Modal de Gerenciamento de Tarefas */}
@@ -886,7 +945,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
           onRequestClose={() => setIsGerenciarTarefasVisible(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}>
+            <View
+              style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}
+            >
               <Text style={styles.modalTitle}>Gerenciamento de Tarefas</Text>
 
               <TouchableOpacity
@@ -932,7 +993,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
                           }}
                           style={styles.acaoButton}
                         >
-                          <FontAwesome name="exchange" size={20} color="#28a745" />
+                          <FontAwesome
+                            name="exchange"
+                            size={20}
+                            color="#28a745"
+                          />
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => deletarTarefa(tarefa.id)}
@@ -943,12 +1008,21 @@ const Admin = ({ navigation }: { navigation: any }) => {
                       </View>
                     </View>
 
-                    <Text style={[styles.tarefaStatus, { color: tarefa.esta_pausada ? "#6c757d" : "#28a745" }]}>
+                    <Text
+                      style={[
+                        styles.tarefaStatus,
+                        { color: tarefa.esta_pausada ? "#6c757d" : "#28a745" },
+                      ]}
+                    >
                       Status: {tarefa.esta_pausada ? "Pausada" : "Ativa"}
                     </Text>
 
                     <TouchableOpacity
-                      style={[styles.button, styles.feriadoButton, tarefa.tem_feriado_hoje && styles.feriadoAtivo]}
+                      style={[
+                        styles.button,
+                        styles.feriadoButton,
+                        tarefa.tem_feriado_hoje && styles.feriadoAtivo,
+                      ]}
                       onPress={() => {
                         if (tarefa.tem_feriado_hoje) {
                           removerFeriadoHoje(tarefa.id);
@@ -958,16 +1032,20 @@ const Admin = ({ navigation }: { navigation: any }) => {
                       }}
                     >
                       <View style={styles.feriadoContent}>
-                        <FontAwesome 
-                          name="calendar" 
-                          size={16} 
-                          color={tarefa.tem_feriado_hoje ? "#fff" : "#000"} 
+                        <FontAwesome
+                          name="calendar"
+                          size={16}
+                          color={tarefa.tem_feriado_hoje ? "#fff" : "#000"}
                         />
-                        <Text style={[
-                          styles.buttonText, 
-                          tarefa.tem_feriado_hoje && styles.feriadoAtivoText
-                        ]}>
-                          {tarefa.tem_feriado_hoje ? "Desmarcar Feriado" : "Marcar como Feriado"}
+                        <Text
+                          style={[
+                            styles.buttonText,
+                            tarefa.tem_feriado_hoje && styles.feriadoAtivoText,
+                          ]}
+                        >
+                          {tarefa.tem_feriado_hoje
+                            ? "Desmarcar Feriado"
+                            : "Marcar como Feriado"}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1078,7 +1156,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
           onRequestClose={() => setIsGerenciarPessoasVisible(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}>
+            <View
+              style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}
+            >
               <Text style={styles.modalTitle}>Gerenciamento de Pessoas</Text>
 
               <ScrollView>
@@ -1087,7 +1167,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     <View style={styles.pessoaInfo}>
                       <Text style={styles.pessoaNome}>{pessoa.name}</Text>
                       {pessoa.departamento && (
-                        <Text style={styles.pessoaDepartamento}>{pessoa.departamento}</Text>
+                        <Text style={styles.pessoaDepartamento}>
+                          {pessoa.departamento}
+                        </Text>
                       )}
                     </View>
 
@@ -1107,7 +1189,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
                             setIsRetornoModalVisible(true);
                           }}
                         >
-                          <Text style={styles.buttonText}>Registrar Retorno</Text>
+                          <Text style={styles.buttonText}>
+                            Registrar Retorno
+                          </Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1145,9 +1229,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 onChangeText={(text) => {
                   // Aplica máscara de formatação
                   const formatted = text
-                    .replace(/\D/g, '') // Remove não-dígitos
-                    .replace(/^(\d{2})(\d)/, '$1-$2') // Coloca hífen após dia
-                    .replace(/^(\d{2})\-(\d{2})(\d)/, '$1-$2-$3') // Coloca hífen após mês
+                    .replace(/\D/g, "") // Remove não-dígitos
+                    .replace(/^(\d{2})(\d)/, "$1-$2") // Coloca hífen após dia
+                    .replace(/^(\d{2})\-(\d{2})(\d)/, "$1-$2-$3") // Coloca hífen após mês
                     .substring(0, 10); // Limita a 10 caracteres
                   setDataRetorno(formatted);
                 }}
@@ -1195,14 +1279,18 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     key={usuario.id}
                     style={[
                       styles.usuarioOption,
-                      novoResponsavelId === usuario.id && styles.usuarioSelected
+                      novoResponsavelId === usuario.id &&
+                        styles.usuarioSelected,
                     ]}
                     onPress={() => setNovoResponsavelId(usuario.id)}
                   >
-                    <Text style={[
-                      styles.usuarioText,
-                      novoResponsavelId === usuario.id && styles.usuarioTextSelected
-                    ]}>
+                    <Text
+                      style={[
+                        styles.usuarioText,
+                        novoResponsavelId === usuario.id &&
+                          styles.usuarioTextSelected,
+                      ]}
+                    >
                       {usuario.name}
                     </Text>
                   </TouchableOpacity>
@@ -1240,14 +1328,14 @@ const styles = StyleSheet.create({
   feriadosSection: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 8,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#333',
+    color: "#333",
   },
   feriadoForm: {
     marginBottom: 15,
@@ -1255,7 +1343,7 @@ const styles = StyleSheet.create({
   pickerContainer: {
     marginVertical: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     borderRadius: 4,
   },
   picker: {
@@ -1265,25 +1353,25 @@ const styles = StyleSheet.create({
     maxHeight: 200,
   },
   feriadoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 4,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   feriadoText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   removeButtonIcon: {
     padding: 5,
   },
   addButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: "#28a745",
     marginTop: 10,
   },
   container: {
