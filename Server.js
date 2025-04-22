@@ -386,30 +386,77 @@ app.get("/user-data", (req, res) => {
 /* Rotas de Gerenciamento de Tarefas */
 
 // Criar tarefa
-app.post("/tarefas", (req, res) => {
+app.post("/tarefas", async (req, res) => {
   const { nome, intervalo_dias } = req.body;
   console.log("Recebido request para criar tarefa:", req.body);
 
-  const sql =
-    "INSERT INTO tarefas (nome, intervalo_dias, esta_pausada) VALUES (?, ?, false)";
+  try {
+    // Buscar o primeiro usuário disponível na ordem
+    const usuariosDisponiveis = await new Promise((resolve, reject) => {
+      const sqlUsuarios = `
+        SELECT id
+        FROM users
+        WHERE em_viagem = FALSE
+        ORDER BY ordem ASC
+        LIMIT 1
+      `;
 
-  db.query(sql, [nome, intervalo_dias], (err, result) => {
-    if (err) {
-      console.error("Erro ao criar tarefa:", err);
-      return res.status(500).send({
+      db.query(sqlUsuarios, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (usuariosDisponiveis.length === 0) {
+      return res.status(400).send({
         success: false,
-        message: "Erro ao criar tarefa",
-        error: err.message,
+        message: "Não há usuários disponíveis para atribuir a tarefa",
       });
     }
 
-    console.log("Tarefa criada com sucesso:", result);
-    res.status(201).send({
-      success: true,
-      message: "Tarefa criada com sucesso!",
-      taskId: result.insertId,
+    const responsavelId = usuariosDisponiveis[0].id;
+    console.log(`Atribuindo tarefa ao responsável ID ${responsavelId}`);
+
+    // Calcular a próxima execução (hoje + intervalo_dias)
+    const proximaExecucao = new Date();
+    proximaExecucao.setDate(
+      proximaExecucao.getDate() + parseInt(intervalo_dias)
+    );
+    const dataFormatada = proximaExecucao.toISOString().split("T")[0];
+
+    const sql =
+      "INSERT INTO tarefas (nome, intervalo_dias, esta_pausada, responsavel_id, proxima_execucao) VALUES (?, ?, false, ?, ?)";
+
+    db.query(
+      sql,
+      [nome, intervalo_dias, responsavelId, dataFormatada],
+      (err, result) => {
+        if (err) {
+          console.error("Erro ao criar tarefa:", err);
+          return res.status(500).send({
+            success: false,
+            message: "Erro ao criar tarefa",
+            error: err.message,
+          });
+        }
+
+        console.log("Tarefa criada com sucesso:", result);
+        res.status(201).send({
+          success: true,
+          message: "Tarefa criada com sucesso!",
+          taskId: result.insertId,
+          responsavelId: responsavelId,
+        });
+      }
+    );
+  } catch (error) {
+    console.error("Erro ao processar criação de tarefa:", error);
+    res.status(500).send({
+      success: false,
+      message: "Erro ao processar criação de tarefa",
+      error: error.message,
     });
-  });
+  }
 });
 
 // Listar todas as tarefas
@@ -755,122 +802,259 @@ app.get("/tarefas/agendamento", (req, res) => {
   });
 });
 
+// Função para encontrar o próximo responsável disponível
+const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
+  return new Promise((resolve, reject) => {
+    // Buscar o ID do usuário que executou a tarefa (o usuário atual)
+    const sqlExecutor = `
+      SELECT responsavel_id
+      FROM execucoes_tarefas
+      WHERE tarefa_id = ?
+      ORDER BY data_execucao DESC
+      LIMIT 1
+    `;
+
+    db.query(sqlExecutor, [tarefaId], (err, ultimaExecucao) => {
+      if (err) {
+        console.error("Erro ao buscar última execução:", err);
+        return reject(err);
+      }
+
+      // ID do usuário que acabou de executar a tarefa (pode ser diferente do responsável atual)
+      const executorId =
+        ultimaExecucao.length > 0 ? ultimaExecucao[0].responsavel_id : null;
+      console.log(
+        `Último executor da tarefa ${tarefaId}: ${executorId || "Nenhum"}`
+      );
+
+      // Buscar todos os usuários ordenados por ordem
+      const sqlTodosUsuarios = `
+        SELECT id, name, ordem, em_viagem
+        FROM users
+        ORDER BY ordem ASC
+      `;
+
+      db.query(sqlTodosUsuarios, (err, todosUsuarios) => {
+        if (err) {
+          console.error("Erro ao buscar todos os usuários:", err);
+          return reject(err);
+        }
+
+        if (todosUsuarios.length === 0) {
+          console.log("Nenhum usuário encontrado");
+          return resolve(null);
+        }
+
+        console.log(
+          "Todos os usuários:",
+          todosUsuarios.map(
+            (u) =>
+              `${u.id}: ${u.name} (ordem: ${u.ordem}, em_viagem: ${u.em_viagem})`
+          )
+        );
+
+        // Filtrar apenas usuários disponíveis (não em viagem)
+        // E que não sejam o usuário que acabou de executar a tarefa
+        const usuariosDisponiveis = todosUsuarios.filter(
+          (u) => !u.em_viagem && (executorId === null || u.id !== executorId)
+        );
+
+        if (usuariosDisponiveis.length === 0) {
+          console.log("Nenhum usuário disponível encontrado");
+          // Se não houver usuários disponíveis, retornar qualquer usuário não em viagem
+          const qualquerDisponivel = todosUsuarios.find((u) => !u.em_viagem);
+          return resolve(qualquerDisponivel ? qualquerDisponivel.id : null);
+        }
+
+        console.log(
+          "Usuários disponíveis:",
+          usuariosDisponiveis.map(
+            (u) => `${u.id}: ${u.name} (ordem: ${u.ordem})`
+          )
+        );
+
+        // Ordenar os usuários disponíveis por ordem
+        usuariosDisponiveis.sort((a, b) => a.ordem - b.ordem);
+
+        // Encontrar o índice do responsável atual na lista ordenada
+        const indiceAtual = todosUsuarios.findIndex(
+          (u) => u.id === responsavelAtualId
+        );
+
+        if (indiceAtual === -1) {
+          console.log(
+            `Responsável atual (ID ${responsavelAtualId}) não encontrado na lista`
+          );
+          // Se o responsável atual não for encontrado, pegar o primeiro disponível
+          return resolve(usuariosDisponiveis[0].id);
+        }
+
+        // Encontrar o próximo usuário na ordem circular
+        let proximoIndice = indiceAtual;
+        let proximoUsuario = null;
+
+        // Procurar o próximo usuário disponível na ordem circular
+        do {
+          proximoIndice = (proximoIndice + 1) % todosUsuarios.length;
+          const candidato = todosUsuarios[proximoIndice];
+
+          // Verificar se o candidato está disponível e não é o executor
+          if (
+            !candidato.em_viagem &&
+            (executorId === null || candidato.id !== executorId)
+          ) {
+            proximoUsuario = candidato;
+            break;
+          }
+
+          // Evitar loop infinito se voltarmos ao índice inicial
+          if (proximoIndice === indiceAtual) {
+            break;
+          }
+        } while (true);
+
+        // Se não encontrou ninguém na busca circular, pegar o primeiro disponível
+        if (!proximoUsuario) {
+          proximoUsuario = usuariosDisponiveis[0];
+        }
+
+        console.log(
+          `Selecionando o próximo usuário: ${proximoUsuario.id}: ${proximoUsuario.name} (ordem: ${proximoUsuario.ordem})`
+        );
+        return resolve(proximoUsuario.id);
+      });
+    });
+  });
+};
+
 // Registrar execução de tarefa
-app.post("/tarefas/:id/executar", (req, res) => {
+app.post("/tarefas/:id/executar", async (req, res) => {
   const { id } = req.params;
   const { usuario_id, data_execucao, tipo = "manual" } = req.body;
 
-  db.beginTransaction((err) => {
-    if (err) {
-      console.error("Erro ao iniciar transação:", err);
-      return res.status(500).send({
+  try {
+    // Inicia a transação
+    await new Promise((resolve, reject) => {
+      db.beginTransaction((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    // Verifica se a tarefa está pausada e obtém informações
+    const tarefaInfo = await new Promise((resolve, reject) => {
+      db.query(
+        "SELECT esta_pausada, intervalo_dias, responsavel_id FROM tarefas WHERE id = ?",
+        [id],
+        (err, results) => {
+          if (err) reject(err);
+          else resolve(results[0]);
+        }
+      );
+    });
+
+    if (!tarefaInfo) {
+      await new Promise((resolve, reject) => {
+        db.rollback(() => resolve());
+      });
+      return res.status(404).send({
         success: false,
-        message: "Erro ao iniciar transação",
-        error: err.message,
+        message: "Tarefa não encontrada",
       });
     }
 
-    // Primeiro verifica se a tarefa está pausada e obtém o intervalo_dias
-    db.query(
-      "SELECT esta_pausada, intervalo_dias FROM tarefas WHERE id = ?",
-      [id],
-      (err, results) => {
-        if (err) {
-          return db.rollback(() => {
-            console.error("Erro ao verificar status da tarefa:", err);
-            res.status(500).send({
-              success: false,
-              message: "Erro ao verificar status da tarefa",
-              error: err.message,
-            });
-          });
-        }
+    if (tarefaInfo.esta_pausada) {
+      await new Promise((resolve, reject) => {
+        db.rollback(() => resolve());
+      });
+      return res.status(400).send({
+        success: false,
+        message: "Não é possível executar uma tarefa pausada",
+      });
+    }
 
-        if (results.length === 0) {
-          return db.rollback(() => {
-            res.status(404).send({
-              success: false,
-              message: "Tarefa não encontrada",
-            });
-          });
-        }
+    const intervalo_dias = tarefaInfo.intervalo_dias;
+    const data_exec = data_execucao || new Date().toISOString().split("T")[0];
 
-        if (results[0].esta_pausada) {
-          return db.rollback(() => {
-            res.status(400).send({
-              success: false,
-              message: "Não é possível executar uma tarefa pausada",
-            });
-          });
-        }
-
-        const intervalo_dias = results[0].intervalo_dias;
-        const data_exec =
-          data_execucao || new Date().toISOString().split("T")[0];
-
-        // Registra a execução - Alterado usuario_id para responsavel_id
-        const sqlInsert = `
-          INSERT INTO execucoes_tarefas
-          (tarefa_id, responsavel_id, data_execucao, tipo)
-          VALUES (?, ?, ?, ?)
-        `;
-
-        db.query(
-          sqlInsert,
-          [id, usuario_id, data_exec, tipo],
-          (err, result) => {
-            if (err) {
-              return db.rollback(() => {
-                console.error("Erro ao registrar execução:", err);
-                res.status(500).send({
-                  success: false,
-                  message: "Erro ao registrar execução da tarefa",
-                  error: err.message,
-                });
-              });
-            }
-
-            // Atualiza a próxima_execucao e ultima_execucao
-            db.query(
-              "UPDATE tarefas SET proxima_execucao = DATE_ADD(?, INTERVAL ? DAY), ultima_execucao = ? WHERE id = ?",
-              [data_exec, intervalo_dias, data_exec, id],
-              (err) => {
-                if (err) {
-                  return db.rollback(() => {
-                    console.error("Erro ao atualizar próxima execução:", err);
-                    res.status(500).send({
-                      success: false,
-                      message: "Erro ao atualizar próxima execução",
-                      error: err.message,
-                    });
-                  });
-                }
-
-                db.commit((err) => {
-                  if (err) {
-                    return db.rollback(() => {
-                      console.error("Erro ao finalizar transação:", err);
-                      res.status(500).send({
-                        success: false,
-                        message: "Erro ao finalizar transação",
-                        error: err.message,
-                      });
-                    });
-                  }
-
-                  res.status(201).send({
-                    success: true,
-                    message: "Execução registrada com sucesso!",
-                    execucaoId: result.insertId,
-                  });
-                });
-              }
-            );
-          }
-        );
-      }
+    // Encontrar o próximo responsável
+    const proximoResponsavelId = await encontrarProximoResponsavel(
+      id,
+      tarefaInfo.responsavel_id
     );
-  });
+
+    if (!proximoResponsavelId) {
+      await new Promise((resolve, reject) => {
+        db.rollback(() => resolve());
+      });
+      return res.status(500).send({
+        success: false,
+        message: "Não foi possível encontrar um próximo responsável",
+      });
+    }
+
+    console.log(
+      `Passando tarefa ${id} do responsável ${tarefaInfo.responsavel_id} para ${proximoResponsavelId}`
+    );
+
+    // Registra a execução
+    const resultExecucao = await new Promise((resolve, reject) => {
+      const sqlInsert = `
+        INSERT INTO execucoes_tarefas
+        (tarefa_id, responsavel_id, data_execucao, tipo)
+        VALUES (?, ?, ?, ?)
+      `;
+
+      db.query(sqlInsert, [id, usuario_id, data_exec, tipo], (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+    // Atualiza a próxima_execucao, ultima_execucao e o novo responsável
+    await new Promise((resolve, reject) => {
+      db.query(
+        "UPDATE tarefas SET proxima_execucao = DATE_ADD(?, INTERVAL ? DAY), ultima_execucao = ?, responsavel_id = ? WHERE id = ?",
+        [data_exec, intervalo_dias, data_exec, proximoResponsavelId, id],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Commit da transação
+    await new Promise((resolve, reject) => {
+      db.commit((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    res.status(201).send({
+      success: true,
+      message:
+        "Execução registrada com sucesso e tarefa atribuída ao próximo responsável!",
+      execucaoId: resultExecucao.insertId,
+      novoResponsavelId: proximoResponsavelId,
+    });
+  } catch (error) {
+    console.error("Erro ao processar execução de tarefa:", error);
+
+    // Rollback em caso de erro
+    try {
+      await new Promise((resolve) => {
+        db.rollback(() => resolve());
+      });
+    } catch (rollbackError) {
+      console.error("Erro ao fazer rollback:", rollbackError);
+    }
+
+    res.status(500).send({
+      success: false,
+      message: "Erro ao processar execução de tarefa",
+      error: error.message,
+    });
+  }
 });
 
 // Histórico de execuções de uma tarefa
@@ -879,7 +1063,7 @@ app.get("/tarefas/:id/historico", (req, res) => {
   const sql = `
     SELECT e.*, u.name as responsavel
     FROM execucoes_tarefas e
-    JOIN users u ON e.usuario_id = u.id
+    JOIN users u ON e.responsavel_id = u.id
     WHERE e.tarefa_id = ?
     ORDER BY e.data_execucao DESC
     LIMIT 10`;
@@ -1145,72 +1329,265 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
 
 /* Rotas de Gerenciamento de Viagens */
 
+// Função para redistribuir as tarefas de um usuário
+const redistribuirTarefasDoUsuario = (usuarioId) => {
+  return new Promise((resolve, reject) => {
+    // Buscar todas as tarefas do usuário
+    const sqlBuscarTarefas = `
+      SELECT id FROM tarefas
+      WHERE responsavel_id = ?
+      AND esta_pausada = FALSE
+    `;
+
+    db.query(sqlBuscarTarefas, [usuarioId], (err, tarefas) => {
+      if (err) {
+        console.error("Erro ao buscar tarefas do usuário:", err);
+        return reject(err);
+      }
+
+      if (tarefas.length === 0) {
+        // Nenhuma tarefa para redistribuir
+        console.log(`Nenhuma tarefa encontrada para o usuário ${usuarioId}`);
+        return resolve();
+      }
+
+      // Buscar todos os usuários ordenados por ordem
+      const sqlTodosUsuarios = `
+        SELECT id, name, ordem, em_viagem
+        FROM users
+        ORDER BY ordem ASC
+      `;
+
+      db.query(sqlTodosUsuarios, (err, todosUsuarios) => {
+        if (err) {
+          console.error("Erro ao buscar todos os usuários:", err);
+          return reject(err);
+        }
+
+        if (todosUsuarios.length === 0) {
+          console.log("Nenhum usuário encontrado");
+          return resolve();
+        }
+
+        // Filtrar apenas usuários disponíveis (não em viagem)
+        const usuariosDisponiveis = todosUsuarios.filter(
+          (u) => !u.em_viagem && u.id !== usuarioId
+        );
+
+        if (usuariosDisponiveis.length === 0) {
+          console.log("Nenhum usuário disponível para receber tarefas");
+          return resolve();
+        }
+
+        // Ordenar os usuários disponíveis por ordem
+        usuariosDisponiveis.sort((a, b) => a.ordem - b.ordem);
+
+        // Encontrar o índice do usuário atual na lista completa
+        const indiceAtual = todosUsuarios.findIndex((u) => u.id === usuarioId);
+
+        if (indiceAtual === -1) {
+          console.log(`Usuário ${usuarioId} não encontrado na lista`);
+          // Se o usuário não for encontrado, usar o primeiro disponível
+          const novoResponsavelId = usuariosDisponiveis[0].id;
+          redistribuirParaNovoResponsavel(
+            tarefas,
+            novoResponsavelId,
+            resolve,
+            reject
+          );
+          return;
+        }
+
+        // Encontrar o próximo usuário na ordem circular
+        let proximoIndice = indiceAtual;
+        let proximoUsuario = null;
+
+        // Procurar o próximo usuário disponível na ordem circular
+        do {
+          proximoIndice = (proximoIndice + 1) % todosUsuarios.length;
+          const candidato = todosUsuarios[proximoIndice];
+
+          // Verificar se o candidato está disponível e não é o usuário atual
+          if (!candidato.em_viagem && candidato.id !== usuarioId) {
+            proximoUsuario = candidato;
+            break;
+          }
+
+          // Evitar loop infinito se voltarmos ao índice inicial
+          if (proximoIndice === indiceAtual) {
+            break;
+          }
+        } while (true);
+
+        // Se não encontrou ninguém na busca circular, pegar o primeiro disponível
+        if (!proximoUsuario && usuariosDisponiveis.length > 0) {
+          proximoUsuario = usuariosDisponiveis[0];
+        }
+
+        if (!proximoUsuario) {
+          console.log("Não foi possível encontrar um novo responsável");
+          return resolve();
+        }
+
+        console.log(
+          `Redistribuindo tarefas de ${usuarioId} para ${proximoUsuario.id} (${proximoUsuario.name})`
+        );
+        redistribuirParaNovoResponsavel(
+          tarefas,
+          proximoUsuario.id,
+          resolve,
+          reject
+        );
+      });
+    });
+  });
+};
+
+// Função auxiliar para atualizar as tarefas para o novo responsável
+const redistribuirParaNovoResponsavel = (
+  tarefas,
+  novoResponsavelId,
+  resolve,
+  reject
+) => {
+  // Atualizar todas as tarefas para o novo responsável
+  const atualizacoes = tarefas.map((tarefa) => {
+    return new Promise((resolveUpdate, rejectUpdate) => {
+      db.query(
+        "UPDATE tarefas SET responsavel_id = ? WHERE id = ?",
+        [novoResponsavelId, tarefa.id],
+        (err) => {
+          if (err) {
+            console.error(`Erro ao atualizar tarefa ${tarefa.id}:`, err);
+            rejectUpdate(err);
+          } else {
+            resolveUpdate();
+          }
+        }
+      );
+    });
+  });
+
+  Promise.all(atualizacoes)
+    .then(() => {
+      console.log(`${tarefas.length} tarefas redistribuídas com sucesso`);
+      resolve();
+    })
+    .catch((err) => {
+      console.error("Erro ao redistribuir tarefas:", err);
+      reject(err);
+    });
+};
+
 // Registrar início de viagem
-app.post("/viagens/iniciar", (req, res) => {
+app.post("/viagens/iniciar", async (req, res) => {
   const { usuario_id, data_saida } = req.body;
 
-  db.beginTransaction((err) => {
-    if (err) {
-      console.error("Erro ao iniciar transação:", err);
-      return res.status(500).send({
+  if (!usuario_id || !data_saida) {
+    return res.status(400).send({
+      success: false,
+      message: "ID do usuário e data de saída são obrigatórios",
+    });
+  }
+
+  // Verifica se o usuário já está em viagem
+  try {
+    const results = await new Promise((resolve, reject) => {
+      db.query(
+        "SELECT em_viagem FROM users WHERE id = ?",
+        [usuario_id],
+        (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        }
+      );
+    });
+
+    if (results.length === 0) {
+      return res.status(404).send({
         success: false,
-        message: "Erro ao iniciar transação",
-        error: err.message,
+        message: "Usuário não encontrado",
       });
     }
 
-    // Primeiro atualiza o status em_viagem do usuário e armazena o ID da viagem
-    db.query(
-      "INSERT INTO viagens (usuario_id, data_saida) VALUES (?, ?)",
-      [usuario_id, data_saida],
-      (err, result) => {
-        if (err) {
-          return db.rollback(() => {
-            res.status(500).send({
-              success: false,
-              message: "Erro ao atualizar status de viagem",
-              error: err.message,
-            });
-          });
-        }
+    if (results[0].em_viagem) {
+      return res.status(400).send({
+        success: false,
+        message: "Usuário já está em viagem",
+      });
+    }
+
+    // Inicia a transação
+    db.beginTransaction(async (err) => {
+      if (err) {
+        console.error("Erro na transação:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao iniciar transação",
+          error: err.message,
+        });
+      }
+
+      try {
+        // Primeiro registra a viagem
+        const result = await new Promise((resolve, reject) => {
+          db.query(
+            "INSERT INTO viagens (usuario_id, data_saida) VALUES (?, ?)",
+            [usuario_id, data_saida],
+            (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            }
+          );
+        });
 
         // Depois atualiza o status do usuário
-        db.query(
-          "UPDATE users SET em_viagem = TRUE WHERE id = ?",
-          [usuario_id],
-          (err) => {
-            if (err) {
-              return db.rollback(() => {
-                res.status(500).send({
-                  success: false,
-                  message: "Erro ao registrar viagem",
-                  error: err.message,
-                });
-              });
+        await new Promise((resolve, reject) => {
+          db.query(
+            "UPDATE users SET em_viagem = TRUE WHERE id = ?",
+            [usuario_id],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
             }
+          );
+        });
 
-            db.commit((err) => {
-              if (err) {
-                return db.rollback(() => {
-                  res.status(500).send({
-                    success: false,
-                    message: "Erro ao finalizar transação",
-                    error: err.message,
-                  });
-                });
-              }
+        // Redistribuir as tarefas do usuário
+        await redistribuirTarefasDoUsuario(usuario_id);
 
-              res.send({
-                success: true,
-                message: "Viagem registrada com sucesso!",
-                viagem_id: result.insertId,
-              });
-            });
-          }
-        );
+        // Commit da transação
+        await new Promise((resolve, reject) => {
+          db.commit((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        res.send({
+          success: true,
+          message: "Viagem registrada com sucesso e tarefas redistribuídas!",
+          viagem_id: result.insertId,
+        });
+      } catch (error) {
+        return db.rollback(() => {
+          console.error("Erro ao processar viagem:", error);
+          res.status(500).send({
+            success: false,
+            message: "Erro ao processar viagem",
+            error: error.message,
+          });
+        });
       }
-    );
-  });
+    });
+  } catch (error) {
+    console.error("Erro ao verificar status de viagem:", error);
+    return res.status(500).send({
+      success: false,
+      message: "Erro ao verificar status de viagem",
+      error: error.message,
+    });
+  }
 });
 
 // Registrar retorno de viagem
@@ -1492,13 +1869,21 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
         FROM tarefas t
         WHERE t.responsavel_id = ?
         AND t.esta_pausada = FALSE
-        AND CURDATE() >= COALESCE(t.proxima_execucao, CURDATE())
         ORDER BY t.nome
       `;
 
+      console.log(`Buscando tarefas para o usuário ID ${id}`);
       db.query(sql, [id], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
+        if (err) {
+          console.error("Erro ao buscar tarefas do usuário:", err);
+          reject(err);
+        } else {
+          console.log(
+            `Encontradas ${results.length} tarefas para o usuário ID ${id}`
+          );
+          results.forEach((t) => console.log(`- ${t.id}: ${t.nome}`));
+          resolve(results);
+        }
       });
     });
 
