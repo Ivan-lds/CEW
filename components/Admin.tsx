@@ -157,9 +157,19 @@ const Admin = ({ navigation }: { navigation: any }) => {
   };
 
   const convertDateToDatabaseFormat = (date) => {
+    console.log("convertDateToDatabaseFormat - Input:", date);
+
+    // Verifica se a data está no formato correto (dd-mm-yyyy)
+    if (!/^\d{2}-\d{2}-\d{4}$/.test(date)) {
+      console.log("Formato inválido detectado:", date);
+      throw new Error("Data em formato inválido. Use DD-MM-YYYY");
+    }
+
     // Converte dd-mm-yyyy para yyyy-mm-dd
     const [day, month, year] = date.split("-");
-    return `${year}-${month}-${day}`;
+    const result = `${year}-${month}-${day}`;
+    console.log("convertDateToDatabaseFormat - Output:", result);
+    return result;
   };
 
   const handleSetBirthday = async (date) => {
@@ -427,14 +437,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para buscar pessoas
   const buscarPessoas = async () => {
     try {
-      const response = await axios.get(
-        "http://192.168.1.55:3001/pessoas/ordem"
-      );
-      if (response.data.success) {
-        const pessoasOrdenadas = response.data.pessoas;
-        setPessoas(pessoasOrdenadas);
-        setPessoasOrdenadas(pessoasOrdenadas);
-      }
+      const response = await axios.get("http://192.168.1.55:3001/users");
+      console.log("Resposta buscarPessoas:", response.data); // Log para debug
+      setPessoas(response.data);
     } catch (error) {
       console.error("Erro ao buscar pessoas:", error);
       Alert.alert("Erro", "Não foi possível carregar a lista de pessoas.");
@@ -506,34 +511,111 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   // Função para registrar retorno
   const registrarRetorno = async () => {
-    if (!pessoaSelecionada || !dataRetorno) {
+    console.log("Iniciando registrarRetorno");
+    console.log("pessoaSelecionada:", pessoaSelecionada);
+    console.log("dataRetorno:", dataRetorno);
+
+    if (!pessoaSelecionada) {
+      Alert.alert("Erro", "Nenhuma pessoa selecionada.");
+      return;
+    }
+
+    if (!dataRetorno) {
       Alert.alert("Erro", "Por favor, preencha a data de retorno.");
       return;
     }
 
-    // Converte dd-mm-yyyy para yyyy-mm-dd antes de enviar
-    const formattedDate = convertDateToDatabaseFormat(dataRetorno);
-
     try {
+      // Verificar se a pessoa está realmente em viagem
+      if (!pessoaSelecionada.em_viagem) {
+        Alert.alert("Erro", "Esta pessoa não está em viagem.");
+        return;
+      }
+
+      // Verificar viagem_atual_id
+      let viagemId = pessoaSelecionada.viagem_atual_id;
+
+      // Se não tiver viagem_atual_id mas estiver em viagem, buscar a viagem atual
+      if (!viagemId && pessoaSelecionada.em_viagem) {
+        console.log(
+          "Buscando viagem atual para o usuário:",
+          pessoaSelecionada.id
+        );
+        try {
+          const viagemResponse = await axios.get(
+            `http://192.168.1.55:3001/viagens/atual/${pessoaSelecionada.id}`
+          );
+          if (viagemResponse.data.success) {
+            viagemId = viagemResponse.data.viagem_id;
+            console.log("Viagem atual encontrada:", viagemId);
+          } else {
+            console.log("Nenhuma viagem em andamento encontrada");
+            Alert.alert("Erro", "Não foi possível identificar a viagem atual.");
+            return;
+          }
+        } catch (error) {
+          console.error("Erro ao buscar viagem atual:", error);
+          Alert.alert(
+            "Erro",
+            "Não foi possível identificar a viagem atual. Por favor, atualize a lista de pessoas."
+          );
+          return;
+        }
+      } else if (!viagemId) {
+        console.log("Dados da pessoa:", pessoaSelecionada);
+        Alert.alert(
+          "Erro",
+          "Não foi possível identificar a viagem atual. Por favor, atualize a lista de pessoas."
+        );
+        return;
+      }
+
+      // Validação adicional do formato da data
+      if (!/^\d{2}-\d{2}-\d{4}$/.test(dataRetorno)) {
+        console.log("Formato de data inválido:", dataRetorno);
+        Alert.alert("Erro", "Data inválida. Use o formato DD-MM-YYYY");
+        return;
+      }
+
+      const formattedDate = convertDateToDatabaseFormat(dataRetorno);
+
+      console.log("Preparando requisição:", {
+        url: `http://192.168.1.55:3001/viagens/${viagemId}/retorno`,
+        payload: {
+          data_retorno: formattedDate,
+        },
+      });
+
       const response = await axios.post(
-        `http://192.168.1.55:3001/viagens/${pessoaSelecionada.viagem_atual_id}/retorno`,
+        `http://192.168.1.55:3001/viagens/${viagemId}/retorno`,
         {
           data_retorno: formattedDate,
         }
       );
 
+      console.log("Resposta do servidor:", response.data);
+
       if (response.data.success) {
-        Alert.alert(
-          "Sucesso",
-          `Retorno registrado com sucesso! Dias fora: ${response.data.dias_fora}`
-        );
+        console.log("Retorno registrado com sucesso");
+        Alert.alert("Sucesso", "Retorno registrado com sucesso!");
         setIsRetornoModalVisible(false);
         setDataRetorno("");
+        setPessoaSelecionada(null);
         buscarPessoas();
       }
     } catch (error) {
-      console.error("Erro ao registrar retorno:", error);
-      Alert.alert("Erro", "Não foi possível registrar o retorno.");
+      console.error("Erro detalhado:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      const mensagemErro =
+        error.response?.data?.message ||
+        (error.message === "Data em formato inválido. Use DD-MM-YYYY"
+          ? error.message
+          : "Não foi possível registrar o retorno.");
+      Alert.alert("Erro", mensagemErro);
     }
   };
 
@@ -1227,14 +1309,18 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 placeholder="Data de Retorno (DD-MM-YYYY)"
                 value={dataRetorno}
                 onChangeText={(text) => {
+                  console.log("Input original:", text);
                   // Aplica máscara de formatação
                   const formatted = text
                     .replace(/\D/g, "") // Remove não-dígitos
                     .replace(/^(\d{2})(\d)/, "$1-$2") // Coloca hífen após dia
                     .replace(/^(\d{2})\-(\d{2})(\d)/, "$1-$2-$3") // Coloca hífen após mês
                     .substring(0, 10); // Limita a 10 caracteres
+                  console.log("Input formatado:", formatted);
                   setDataRetorno(formatted);
                 }}
+                keyboardType="numeric"
+                maxLength={10}
               />
 
               <View style={styles.modalButtons}>

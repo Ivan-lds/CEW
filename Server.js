@@ -52,9 +52,9 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
 
-  console.log("Tentativa de login - Dados recebidos:", { 
-    email, 
-    senhaFornecida: password 
+  console.log("Tentativa de login - Dados recebidos:", {
+    email,
+    senhaFornecida: password,
   });
 
   if (!email || !password) {
@@ -85,7 +85,7 @@ app.post("/login", (req, res) => {
     console.log("Comparação de senhas:", {
       senhaFornecida: password,
       senhaNoBanco: user.password,
-      saoIguais: user.password === password
+      saoIguais: user.password === password,
     });
 
     if (user.password === password) {
@@ -415,13 +415,13 @@ app.post("/tarefas", (req, res) => {
 // Listar todas as tarefas
 app.get("/tarefas", (req, res) => {
   const sql = `
-    SELECT t.*, 
+    SELECT t.*,
     EXISTS(
-      SELECT 1 FROM feriados f 
-      WHERE f.tarefa_id = t.id 
+      SELECT 1 FROM feriados f
+      WHERE f.tarefa_id = t.id
       AND f.data = CURDATE()
-    ) as tem_feriado_hoje 
-    FROM tarefas t 
+    ) as tem_feriado_hoje
+    FROM tarefas t
     ORDER BY t.nome
   `;
 
@@ -639,8 +639,8 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
             WHERE e.data_execucao = CURDATE()
           )
           AND u.id != ?
-          ORDER BY 
-            CASE 
+          ORDER BY
+            CASE
               WHEN u.id > ? THEN u.id
               ELSE u.id + (SELECT MAX(id) FROM users)
             END
@@ -705,7 +705,7 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
 
 function atualizarResponsavel(tarefaId, responsavelId, resolve, reject) {
   const sqlUpdate = `
-    UPDATE tarefas 
+    UPDATE tarefas
     SET responsavel_id = ?,
         proxima_execucao = DATE_ADD(CURDATE(), INTERVAL intervalo_dias DAY)
     WHERE id = ?`;
@@ -722,10 +722,10 @@ function atualizarResponsavel(tarefaId, responsavelId, resolve, reject) {
 // Buscar tarefas com agendamento
 app.get("/tarefas/agendamento", (req, res) => {
   console.log("Iniciando busca de tarefas com agendamento");
-  
+
   // Query simplificada para teste
   const sql = `
-    SELECT 
+    SELECT
       t.*,
       CASE
         WHEN t.esta_pausada THEN 'pausada'
@@ -743,14 +743,14 @@ app.get("/tarefas/agendamento", (req, res) => {
       return res.status(500).send({
         success: false,
         message: "Erro ao buscar tarefas",
-        error: err.message
+        error: err.message,
       });
     }
 
     console.log("Tarefas encontradas:", results.length);
     res.send({
       success: true,
-      tarefas: results
+      tarefas: results,
     });
   });
 });
@@ -760,7 +760,6 @@ app.post("/tarefas/:id/executar", (req, res) => {
   const { id } = req.params;
   const { usuario_id, data_execucao, tipo = "manual" } = req.body;
 
-  // Usar transação para garantir consistência
   db.beginTransaction((err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
@@ -809,10 +808,10 @@ app.post("/tarefas/:id/executar", (req, res) => {
         const data_exec =
           data_execucao || new Date().toISOString().split("T")[0];
 
-        // Registra a execução
+        // Registra a execução - Alterado usuario_id para responsavel_id
         const sqlInsert = `
-          INSERT INTO execucoes_tarefas 
-          (tarefa_id, usuario_id, data_execucao, tipo) 
+          INSERT INTO execucoes_tarefas
+          (tarefa_id, responsavel_id, data_execucao, tipo)
           VALUES (?, ?, ?, ?)
         `;
 
@@ -847,7 +846,6 @@ app.post("/tarefas/:id/executar", (req, res) => {
                   });
                 }
 
-                // Commit da transação
                 db.commit((err) => {
                   if (err) {
                     return db.rollback(() => {
@@ -938,7 +936,7 @@ app.get("/pessoas/ordem", (req, res) => {
 app.post("/pessoas/ordem/inicializar", (req, res) => {
   const sql = `
     INSERT INTO ordem_pessoas (usuario_id, posicao)
-    SELECT 
+    SELECT
       u.id,
       COALESCE((SELECT MAX(posicao) + 1 FROM ordem_pessoas), 1)
     FROM users u
@@ -1161,11 +1159,11 @@ app.post("/viagens/iniciar", (req, res) => {
       });
     }
 
-    // Primeiro atualiza o status em_viagem do usuário
+    // Primeiro atualiza o status em_viagem do usuário e armazena o ID da viagem
     db.query(
-      "UPDATE users SET em_viagem = TRUE WHERE id = ?",
-      [usuario_id],
-      (err) => {
+      "INSERT INTO viagens (usuario_id, data_saida) VALUES (?, ?)",
+      [usuario_id, data_saida],
+      (err, result) => {
         if (err) {
           return db.rollback(() => {
             res.status(500).send({
@@ -1176,11 +1174,11 @@ app.post("/viagens/iniciar", (req, res) => {
           });
         }
 
-        // Depois registra a nova viagem
+        // Depois atualiza o status do usuário
         db.query(
-          "INSERT INTO viagens (usuario_id, data_saida) VALUES (?, ?)",
-          [usuario_id, data_saida],
-          (err, result) => {
+          "UPDATE users SET em_viagem = TRUE WHERE id = ?",
+          [usuario_id],
+          (err) => {
             if (err) {
               return db.rollback(() => {
                 res.status(500).send({
@@ -1220,50 +1218,115 @@ app.post("/viagens/:id/retorno", (req, res) => {
   const { id } = req.params;
   const { data_retorno } = req.body;
 
-  db.beginTransaction((err) => {
-    if (err) {
-      console.error("Erro ao iniciar transação:", err);
-      return res.status(500).send({
-        success: false,
-        message: "Erro ao iniciar transação",
-        error: err.message,
-      });
-    }
+  console.log("Rota /viagens/:id/retorno - Recebido:", {
+    id,
+    data_retorno,
+    body: req.body,
+  });
 
-    // Primeiro busca os dados da viagem
-    db.query(
-      "SELECT usuario_id, data_saida FROM viagens WHERE id = ?",
-      [id],
-      (err, results) => {
+  if (!id || !data_retorno) {
+    console.log("Dados inválidos:", { id, data_retorno });
+    return res.status(400).send({
+      success: false,
+      message: "ID da viagem e data de retorno são obrigatórios",
+    });
+  }
+
+  // Primeiro verificar se a viagem existe e não tem data de retorno
+  console.log("Verificando viagem:", id);
+  db.query(
+    "SELECT id, usuario_id, data_saida, data_retorno FROM viagens WHERE id = ?",
+    [id],
+    (err, results) => {
+      if (err) {
+        console.error("Erro na consulta:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao buscar dados da viagem",
+          error: err.message,
+        });
+      }
+
+      console.log("Resultado da consulta:", results);
+
+      if (results.length === 0) {
+        console.log("Viagem não encontrada:", id);
+        return res.status(404).send({
+          success: false,
+          message: "Viagem não encontrada",
+        });
+      }
+
+      const viagem = results[0];
+
+      // Verificar se a viagem já tem data de retorno
+      if (viagem.data_retorno) {
+        console.log("Viagem já tem data de retorno:", viagem.data_retorno);
+        return res.status(400).send({
+          success: false,
+          message: "Esta viagem já tem uma data de retorno registrada",
+        });
+      }
+
+      const { usuario_id, data_saida } = viagem;
+      // Converter as datas para objetos Date
+      let dias_fora = 0;
+      try {
+        const dataSaida = new Date(data_saida);
+        const dataRetorno = new Date(data_retorno);
+
+        console.log("Datas para cálculo:", {
+          data_saida: data_saida,
+          data_saida_obj: dataSaida,
+          data_retorno: data_retorno,
+          data_retorno_obj: dataRetorno,
+        });
+
+        // Verificar se as datas são válidas
+        if (isNaN(dataSaida.getTime()) || isNaN(dataRetorno.getTime())) {
+          console.error("Datas inválidas:", { dataSaida, dataRetorno });
+          return res.status(400).send({
+            success: false,
+            message: "Data de saída ou retorno inválida",
+          });
+        }
+
+        // Calcular a diferença em dias
+        const diffTime = Math.abs(dataRetorno - dataSaida);
+        dias_fora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        console.log("Calculado dias fora:", {
+          data_saida,
+          data_retorno,
+          diffTime,
+          dias_fora,
+        });
+      } catch (error) {
+        console.error("Erro ao calcular dias fora:", error);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao calcular dias fora",
+          error: error.message,
+        });
+      }
+
+      db.beginTransaction((err) => {
         if (err) {
-          return db.rollback(() => {
-            res.status(500).send({
-              success: false,
-              message: "Erro ao buscar dados da viagem",
-              error: err.message,
-            });
+          console.error("Erro na transação:", err);
+          return res.status(500).send({
+            success: false,
+            message: "Erro ao iniciar transação",
+            error: err.message,
           });
         }
-
-        if (results.length === 0) {
-          return db.rollback(() => {
-            res.status(404).send({
-              success: false,
-              message: "Viagem não encontrada",
-            });
-          });
-        }
-
-        const { usuario_id, data_saida } = results[0];
-        const dias_fora = Math.ceil(
-          (new Date(data_retorno) - new Date(data_saida)) /
-            (1000 * 60 * 60 * 24)
-        );
-
-        // Variável para controlar quando todas as operações estão concluídas
-        let operacoesConcluidas = false;
 
         // Atualiza o registro da viagem
+        console.log("Atualizando viagem com:", {
+          id,
+          data_retorno,
+          dias_fora: dias_fora,
+        });
+
         db.query(
           "UPDATE viagens SET data_retorno = ?, dias_fora = ? WHERE id = ?",
           [data_retorno, dias_fora, id],
@@ -1293,172 +1356,66 @@ app.post("/viagens/:id/retorno", (req, res) => {
                   });
                 }
 
-                // Verifica se hoje é dia da pessoa fazer alguma tarefa
-                db.query(
-                  `SELECT t.id, t.nome
-                   FROM tarefas t
-                   WHERE t.responsavel_id = ?
-                   AND t.esta_pausada = FALSE
-                   AND CURDATE() >= COALESCE(t.proxima_execucao, CURDATE())`,
-                  [usuario_id],
-                  (err, tarefasHoje) => {
-                    if (err) {
-                      return db.rollback(() => {
-                        res.status(500).send({
-                          success: false,
-                          message: "Erro ao verificar tarefas do dia",
-                          error: err.message,
-                        });
+                db.commit((err) => {
+                  if (err) {
+                    return db.rollback(() => {
+                      res.status(500).send({
+                        success: false,
+                        message: "Erro ao finalizar transação",
+                        error: err.message,
                       });
-                    }
-
-                    // Se tem tarefas hoje, passa para a próxima pessoa
-                    if (tarefasHoje.length > 0) {
-                      const tarefasIds = tarefasHoje.map((t) => t.id);
-
-                      // Busca próxima pessoa disponível (não em viagem) para cada tarefa
-                      db.query(
-                        `UPDATE tarefas t
-                         JOIN (
-                           SELECT u.id as proximo_id
-                           FROM users u
-                           WHERE u.em_viagem = FALSE
-                           AND u.id != ?
-                           AND u.id NOT IN (
-                             SELECT e.usuario_id
-                             FROM execucoes_tarefas e
-                             WHERE e.data_execucao = CURDATE()
-                           )
-                           ORDER BY u.id
-                           LIMIT 1
-                         ) prox
-                         SET t.responsavel_id = prox.proximo_id,
-                             t.proxima_execucao = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-                         WHERE t.id IN (?)`,
-                        [usuario_id, tarefasIds],
-                        (err) => {
-                          if (err) {
-                            return db.rollback(() => {
-                              res.status(500).send({
-                                success: false,
-                                message: "Erro ao realocar tarefas do dia",
-                                error: err.message,
-                              });
-                            });
-                          }
-
-                          // Agenda o retorno das tarefas para a pessoa no dia seguinte
-                          db.query(
-                            `UPDATE tarefas
-                             SET responsavel_id = ?,
-                                 proxima_execucao = DATE_ADD(CURDATE(), INTERVAL 2 DAY)
-                             WHERE id IN (?)`,
-                            [usuario_id, tarefasIds],
-                            (err) => {
-                              if (err) {
-                                return db.rollback(() => {
-                                  res.status(500).send({
-                                    success: false,
-                                    message: "Erro ao agendar retorno das tarefas",
-                                    error: err.message,
-                                  });
-                                });
-                              }
-
-                              // Se a viagem durou menos de 7 dias, retorna as outras tarefas
-                              if (dias_fora < 7) {
-                                db.query(
-                                  `UPDATE tarefas 
-                                   SET responsavel_id = ? 
-                                   WHERE responsavel_id IS NULL 
-                                   AND id NOT IN (?)
-                                   AND id IN (
-                                     SELECT tarefa_id 
-                                     FROM execucoes_tarefas 
-                                     WHERE usuario_id = ? 
-                                     AND data_execucao < ?
-                                     GROUP BY tarefa_id
-                                   )`,
-                                  [
-                                    usuario_id,
-                                    tarefasIds,
-                                    usuario_id,
-                                    data_saida,
-                                  ],
-                                  finalizeTransaction
-                                );
-                              } else {
-                                finalizeTransaction(null);
-                              }
-                            }
-                          );
-                        }
-                      );
-                    } else {
-                      // Se não tem tarefas hoje, apenas retorna as tarefas antigas se viagem < 7 dias
-                      if (dias_fora < 7) {
-                        db.query(
-                          `UPDATE tarefas 
-                           SET responsavel_id = ? 
-                           WHERE responsavel_id IS NULL 
-                           AND id IN (
-                             SELECT tarefa_id 
-                             FROM execucoes_tarefas 
-                             WHERE usuario_id = ? 
-                             AND data_execucao < ?
-                             GROUP BY tarefa_id
-                           )`,
-                          [usuario_id, usuario_id, data_saida],
-                          finalizeTransaction
-                        );
-                      } else {
-                        finalizeTransaction(null);
-                      }
-                    }
+                    });
                   }
-                );
+
+                  res.send({
+                    success: true,
+                    message: "Retorno registrado com sucesso!",
+                    dias_fora: dias_fora,
+                  });
+                });
               }
             );
           }
         );
-      }
-    );
-  });
+      });
+    }
+  );
+}); // Registrar retorno de viagem
 
-  function finalizeTransaction(err) {
+// Buscar viagem atual de um usuário
+app.get("/viagens/atual/:usuario_id", (req, res) => {
+  const { usuario_id } = req.params;
+
+  const sql = `
+    SELECT v.id
+    FROM viagens v
+    WHERE v.usuario_id = ?
+    AND v.data_retorno IS NULL
+    ORDER BY v.data_saida DESC
+    LIMIT 1`;
+
+  db.query(sql, [usuario_id], (err, results) => {
     if (err) {
-      return db.rollback(() => {
-        res.status(500).send({
-          success: false,
-          message: "Erro ao finalizar operação",
-          error: err.message,
-        });
+      console.error("Erro ao buscar viagem atual:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao buscar viagem atual",
+        error: err.message,
       });
     }
 
-    db.commit((err) => {
-      if (err) {
-        return db.rollback(() => {
-          res.status(500).send({
-            success: false,
-            message: "Erro ao finalizar transação",
-            error: err.message,
-          });
-        });
-      }
+    if (results.length === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Nenhuma viagem em andamento encontrada",
+      });
+    }
 
-      let operacoesConcluidas = false;
-      if (operacoesConcluidas) {
-        res.send({
-          success: true,
-          message: "Retorno registrado com sucesso!",
-          dias_fora: dias_fora,
-        });
-      } else {
-        operacoesConcluidas = true;
-      }
+    res.send({
+      success: true,
+      viagem_id: results[0].id,
     });
-  }
+  });
 });
 
 // Listar viagens de um usuário
@@ -1527,10 +1484,10 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
     // Busca tarefas para hoje
     const tarefasHoje = await new Promise((resolve, reject) => {
       const sql = `
-        SELECT 
-          t.id, 
-          t.nome, 
-          t.intervalo_dias, 
+        SELECT
+          t.id,
+          t.nome,
+          t.intervalo_dias,
           t.proxima_execucao
         FROM tarefas t
         WHERE t.responsavel_id = ?
@@ -1548,7 +1505,7 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
     // Busca histórico dos últimos 7 dias
     const historico = await new Promise((resolve, reject) => {
       const sql = `
-        SELECT 
+        SELECT
           DATE_FORMAT(e.data_execucao, '%d/%m/%Y') as data,
           GROUP_CONCAT(t.nome ORDER BY t.nome SEPARATOR ', ') as tarefas
         FROM execucoes_tarefas e
@@ -1627,9 +1584,9 @@ const atualizarResponsaveisPorOrdem = async () => {
 
       // Busca usuários disponíveis ordenados
       const sqlUsuarios = `
-        SELECT id 
-        FROM users 
-        WHERE em_viagem = FALSE 
+        SELECT id
+        FROM users
+        WHERE em_viagem = FALSE
         ORDER BY ordem ASC
       `;
 
@@ -1837,9 +1794,9 @@ app.post("/tarefas/lixo/status", (req, res) => {
   // Verifica se é domingo ou feriado
   const hoje = new Date();
   const sql = `
-    SELECT COUNT(*) as count 
-    FROM feriados 
-    WHERE data = CURDATE() 
+    SELECT COUNT(*) as count
+    FROM feriados
+    WHERE data = CURDATE()
     AND tarefa_id = ?
   `;
 
@@ -1965,8 +1922,8 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
 
   // Verifica se o novo responsável existe e não está em viagem
   const sqlVerificaUsuario = `
-    SELECT id, em_viagem 
-    FROM users 
+    SELECT id, em_viagem
+    FROM users
     WHERE id = ?
   `;
 
@@ -1996,7 +1953,7 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
 
     // Atualiza o responsável da tarefa
     const sqlAtualizaTarefa = `
-      UPDATE tarefas 
+      UPDATE tarefas
       SET responsavel_id = ?
       WHERE id = ?
     `;
