@@ -8,7 +8,30 @@ const fs = require("fs");
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors());
+
+// Configuração avançada do CORS para aceitar conexões de qualquer origem
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  })
+);
+
+// Middleware para debug de requisições
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// Endpoint para verificar a saúde do servidor
+app.get("/health", (req, res) => {
+  res.status(200).send({
+    success: true,
+    message: "Servidor está funcionando corretamente",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Configuração do multer para upload de arquivos
 const storage = multer.diskStorage({
@@ -2368,6 +2391,11 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
   });
 });
 
-app.listen(3001, () => {
-  console.log("Servidor rodando na porta 3001");
+app.listen(3001, "0.0.0.0", () => {
+  console.log(
+    "Servidor rodando na porta 3001 e acessível em todas as interfaces de rede"
+  );
+  console.log("Endereços de acesso:");
+  console.log(" - Local: http://localhost:3001");
+  console.log(" - Rede: http://192.168.1.2:3001 (se este for seu IP na rede)");
 });

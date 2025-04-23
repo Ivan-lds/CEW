@@ -17,6 +17,7 @@ import { FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { API_URL, API_CONFIG } from "../config";
 
 interface Notification {
   id: string;
@@ -35,6 +36,23 @@ interface HistoricoItem {
   tarefas: string[];
 }
 
+// Função para formatar a data no formato dd-mm-yyyy
+const formatarData = (dataString: string | null): string => {
+  if (!dataString) return "";
+
+  try {
+    const data = new Date(dataString);
+    const dia = data.getDate().toString().padStart(2, "0");
+    const mes = (data.getMonth() + 1).toString().padStart(2, "0");
+    const ano = data.getFullYear();
+
+    return `${dia}-${mes}-${ano}`;
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return dataString;
+  }
+};
+
 const Home = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -45,6 +63,7 @@ const Home = () => {
   const [emViagem, setEmViagem] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [tarefaExecutando, setTarefaExecutando] = useState<number | null>(null);
+  const [buscandoTarefas, setBuscandoTarefas] = useState(false);
   const navigation = useNavigation();
 
   const notifications: Notification[] = [
@@ -63,7 +82,7 @@ const Home = () => {
         console.log("Dados do usuário carregados:", {
           userId: storedUserId,
           userName: storedUserName,
-          role: role
+          role: role,
         });
 
         if (storedUserId && storedUserName) {
@@ -97,22 +116,65 @@ const Home = () => {
   }, [isAdmin]);
 
   const buscarTarefasUsuario = async (id: number) => {
+    // Evita múltiplas chamadas simultâneas
+    if (buscandoTarefas) {
+      console.log("Já está buscando tarefas. Aguarde...");
+      return;
+    }
+
     try {
+      // Marca que está buscando tarefas
+      setBuscandoTarefas(true);
       setCarregando(true);
-      const response = await axios.get(`http://192.168.1.55:3001/tarefas/usuario/${id}`);
+      console.log(`Buscando tarefas para o usuário ${id}...`);
+
+      const response = await axios.get(
+        `${API_URL}/tarefas/usuario/${id}`,
+        API_CONFIG
+      );
       if (response.data.success) {
+        console.log(
+          `Tarefas encontradas: ${response.data.tarefas_hoje?.length || 0}`
+        );
         setEmViagem(response.data.em_viagem);
         setTarefasHoje(response.data.tarefas_hoje || []);
         setHistorico(response.data.historico || []);
+
+        // Log do número de tarefas encontradas
+        console.log(
+          `Número de tarefas encontradas: ${
+            response.data.tarefas_hoje?.length || 0
+          }`
+        );
       } else {
         console.error("Erro na resposta do servidor:", response.data);
         Alert.alert("Erro", "Não foi possível carregar as tarefas");
       }
     } catch (error) {
       console.error("Erro ao buscar tarefas do usuário:", error);
-      Alert.alert("Erro", "Não foi possível carregar as tarefas. Verifique sua conexão.");
+
+      // Mensagem de erro mais específica baseada no tipo de erro
+      let errorMessage =
+        "Não foi possível carregar as tarefas. Verifique sua conexão.";
+
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão com a internet e tente novamente.";
+      } else if (error.message && error.message.includes("Network Error")) {
+        errorMessage =
+          "Erro de conexão. Verifique se o servidor está rodando e se você está conectado à internet.";
+      } else if (error.response) {
+        // O servidor respondeu com um status de erro
+        errorMessage =
+          error.response.data?.message ||
+          `Erro ${error.response.status}: ${error.response.statusText}`;
+      }
+
+      Alert.alert("Erro", errorMessage);
     } finally {
       setCarregando(false);
+      setBuscandoTarefas(false);
+      console.log("Busca de tarefas finalizada");
     }
   };
 
@@ -123,27 +185,118 @@ const Home = () => {
   const executarTarefa = async (tarefaId: number) => {
     if (!userId) return;
 
-    setTarefaExecutando(tarefaId);
-    try {
-      const response = await axios.post(`http://192.168.1.55:3001/tarefas/${tarefaId}/executar`, {
-        usuario_id: userId,
-        data_execucao: new Date().toISOString().split('T')[0]
-      });
+    // Se já estiver executando qualquer tarefa, não faz nada
+    if (tarefaExecutando !== null) {
+      console.log(`Já existe uma tarefa em execução. Ignorando clique.`);
+      return;
+    }
 
+    // Desabilita o botão imediatamente para evitar cliques duplos
+    setTarefaExecutando(tarefaId);
+
+    // Cria uma cópia local da tarefa
+    const tarefaParaExecutar = tarefasHoje.find((t) => t.id === tarefaId);
+
+    try {
+      console.log(`Executando tarefa ${tarefaId}...`);
+
+      // Faz a requisição para o servidor
+      const response = await axios.post(
+        `${API_URL}/tarefas/${tarefaId}/executar`,
+        {
+          usuario_id: userId,
+          data_execucao: new Date().toISOString().split("T")[0],
+        },
+        {
+          ...API_CONFIG,
+          timeout: 30000, // Aumenta o timeout para 30 segundos
+        }
+      );
+
+      // Se a requisição for bem-sucedida
       if (response.data.success) {
-        Alert.alert("Sucesso", "Tarefa marcada como concluída!");
-        // Atualiza as tarefas após a execução
-        await buscarTarefasUsuario(userId);
+        console.log(`Tarefa ${tarefaId} executada com sucesso!`);
+
+        // Remove a tarefa da lista local após confirmação do servidor
+        setTarefasHoje((prev) => prev.filter((t) => t.id !== tarefaId));
+
+        // Mostra um alerta de sucesso com mais informações
+        Alert.alert(
+          "Tarefa Concluída",
+          `A tarefa foi marcada como concluída com sucesso!\n\nPróximo responsável: ${
+            response.data.novoResponsavelId || "Não definido"
+          }`,
+          [
+            {
+              text: "OK",
+              style: "default",
+              onPress: () => {
+                // Atualiza a lista de tarefas quando o usuário fechar o alerta
+                if (userId && !buscandoTarefas) {
+                  buscarTarefasUsuario(userId);
+                }
+              },
+            },
+          ],
+          { cancelable: false }
+        );
       } else {
-        throw new Error(response.data.message || 'Erro ao executar tarefa');
+        throw new Error(response.data.message || "Erro ao executar tarefa");
       }
     } catch (error) {
       console.error("Erro ao executar tarefa:", error);
-      Alert.alert("Erro", "Não foi possível marcar a tarefa como concluída. Tente novamente.");
-      // Recarrega as tarefas mesmo em caso de erro para garantir consistência
-      await buscarTarefasUsuario(userId);
+
+      // Mensagem de erro mais específica baseada no tipo de erro
+      let errorMessage =
+        "Não foi possível marcar a tarefa como concluída. Tente novamente.";
+
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Tempo de conexão esgotado. Verifique sua conexão com a internet e tente novamente.";
+      } else if (error.message && error.message.includes("Network Error")) {
+        errorMessage =
+          "Erro de conexão. Verifique se o servidor está rodando e se você está conectado à internet.";
+      } else if (error.response) {
+        // O servidor respondeu com um status de erro
+        errorMessage =
+          error.response.data?.message ||
+          `Erro ${error.response.status}: ${error.response.statusText}`;
+      }
+
+      Alert.alert(
+        "Erro",
+        errorMessage,
+        [
+          {
+            text: "OK",
+            style: "default",
+          },
+        ],
+        { cancelable: false }
+      );
+
+      // Restaura a tarefa na lista local já que a execução falhou
+      if (tarefaParaExecutar) {
+        setTarefasHoje((prev) => [...prev, tarefaParaExecutar]);
+      }
+
+      // Atualiza a lista de tarefas após o erro
+      if (userId && !buscandoTarefas) {
+        setTimeout(async () => {
+          try {
+            await buscarTarefasUsuario(userId);
+          } catch (updateError) {
+            console.error(
+              "Erro ao atualizar lista de tarefas após erro:",
+              updateError
+            );
+          }
+        }, 1000);
+      }
     } finally {
+      // Limpa o estado de execução antes de buscar as tarefas
       setTarefaExecutando(null);
+      console.log(`Finalizando execução da tarefa ${tarefaId}`);
     }
   };
 
@@ -175,7 +328,11 @@ const Home = () => {
         showsVerticalScrollIndicator={false}
       >
         {carregando ? (
-          <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
+          <ActivityIndicator
+            size="large"
+            color="#007bff"
+            style={styles.loader}
+          />
         ) : (
           <>
             {/* Painel de Tarefas do Usuário */}
@@ -187,17 +344,31 @@ const Home = () => {
                 </Text>
               ) : tarefasHoje.length > 0 ? (
                 <>
-                  <Text style={styles.subTitle}>Tarefas para Hoje:</Text>
                   {tarefasHoje.map((tarefa) => (
                     <View key={tarefa.id} style={styles.tarefaItem}>
-                      <Text style={styles.tarefaNome}>{tarefa.nome}</Text>
+                      <View style={styles.tarefaInfo}>
+                        <Text style={styles.tarefaNome}>{tarefa.nome}</Text>
+                        {tarefa.proxima_execucao && (
+                          <>
+                            <Text style={styles.separador}>-</Text>
+                            <Text style={styles.tarefaData}>
+                              {formatarData(tarefa.proxima_execucao)}
+                            </Text>
+                          </>
+                        )}
+                      </View>
                       <TouchableOpacity
                         style={[
                           styles.executarButton,
-                          tarefaExecutando === tarefa.id && styles.executarButtonDisabled
+                          (tarefaExecutando === tarefa.id ||
+                            tarefaExecutando !== null) &&
+                            styles.executarButtonDisabled,
                         ]}
                         onPress={() => executarTarefa(tarefa.id)}
-                        disabled={tarefaExecutando === tarefa.id}
+                        disabled={
+                          tarefaExecutando === tarefa.id ||
+                          tarefaExecutando !== null
+                        }
                       >
                         {tarefaExecutando === tarefa.id ? (
                           <ActivityIndicator size="small" color="#fff" />
@@ -224,7 +395,9 @@ const Home = () => {
                     <View key={index} style={styles.historicoItem}>
                       <Text style={styles.historicoData}>{item.data}</Text>
                       <Text style={styles.historicoTarefas}>
-                        {Array.isArray(item.tarefas) ? item.tarefas.join(", ") : ""}
+                        {Array.isArray(item.tarefas)
+                          ? item.tarefas.join(", ")
+                          : ""}
                       </Text>
                     </View>
                   ))}
@@ -309,13 +482,13 @@ const Home = () => {
 
 const styles = StyleSheet.create({
   centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#007bff',
+    color: "#007bff",
   },
   safeContainer: {
     flex: 1,
@@ -435,16 +608,39 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
+  tarefaInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   tarefaNome: {
     fontSize: 16,
     color: "#333",
-    flex: 1,
+    fontWeight: "500",
+  },
+  separador: {
+    fontSize: 16,
+    color: "#6c757d",
+    fontWeight: "bold",
+    marginHorizontal: 4,
+  },
+  tarefaData: {
+    fontSize: 14,
+    color: "#fff",
+    fontStyle: "italic",
+    backgroundColor: "#6c757d",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 5,
+    overflow: "hidden",
   },
   executarButton: {
     backgroundColor: "#28a745",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 25,
+    height: 25,
+    borderRadius: 5,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
@@ -488,6 +684,8 @@ const styles = StyleSheet.create({
   },
   executarButtonDisabled: {
     backgroundColor: "#6c757d",
+    opacity: 0.7,
+    transform: [{ scale: 0.95 }],
   },
 });
 

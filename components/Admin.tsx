@@ -17,6 +17,7 @@ import React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import { API_URL, API_CONFIG } from "../config";
 
 interface Tarefa {
   id: number;
@@ -93,7 +94,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para buscar usuários do banco de dados
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/users"); // Ajuste o endpoint conforme necessário
+      const response = await axios.get(`${API_URL}/users`, API_CONFIG); // Ajuste o endpoint conforme necessário
       setUsers(response.data);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
@@ -103,7 +104,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const fetchUserData = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/user-data", {
+      const response = await axios.get(`${API_URL}/user-data`, {
         params: {
           email: userData.email,
         },
@@ -144,7 +145,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetAdmin = async (role) => {
     try {
-      await axios.post("http://192.168.1.55:3001/transfer-admin", {
+      await axios.post(`${API_URL}/transfer-admin`, {
         newAdminId: selectedUser.name,
         role: role,
       });
@@ -175,7 +176,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const handleSetBirthday = async (date) => {
     try {
       const formattedDate = convertDateToDatabaseFormat(date);
-      await axios.post("http://192.168.1.55:3001/aniversarios", {
+      await axios.post(`${API_URL}/aniversarios`, {
         name: selectedUser.name,
         date: formattedDate,
       });
@@ -189,7 +190,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetDepartment = async (department) => {
     try {
-      await axios.post("http://192.168.1.55:3001/departamentos", {
+      await axios.post(`${API_URL}/departamentos`, {
         name: selectedUser.name,
         departamento: department,
       });
@@ -204,12 +205,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const handleRemoveUser = async () => {
     try {
       console.log("Iniciando remoção do usuário:", selectedUser.name);
-      const response = await axios.post(
-        "http://192.168.1.55:3001/remove-user",
-        {
-          name: selectedUser.name,
-        }
-      );
+      const response = await axios.post(`${API_URL}/remove-user`, {
+        name: selectedUser.name,
+      });
 
       if (response.data.success) {
         console.log("Usuário removido com sucesso:", selectedUser.name);
@@ -265,39 +263,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Buscar tarefas
   const buscarFeriados = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/feriados");
+      const response = await axios.get(`${API_URL}/feriados`, API_CONFIG);
       if (response.data.success) {
         setFeriados(response.data.feriados);
       }
     } catch (error) {
       console.error("Erro ao buscar feriados:", error);
       Alert.alert("Erro", "Não foi possível carregar os feriados.");
-    }
-  };
-
-  const adicionarFeriadoHoje = async (tarefaId: number) => {
-    const hoje = new Date().toISOString().split("T")[0];
-    try {
-      console.log("Adicionando feriado para tarefa:", tarefaId);
-      const response = await axios.post("http://192.168.1.55:3001/feriados", {
-        data: hoje,
-        tarefa_id: tarefaId,
-      });
-      if (response.data.success) {
-        console.log("Feriado adicionado com sucesso");
-        // Atualiza o estado imediatamente
-        setTarefas((prevTarefas) =>
-          prevTarefas.map((tarefa) =>
-            tarefa.id === tarefaId
-              ? { ...tarefa, tem_feriado_hoje: true }
-              : tarefa
-          )
-        );
-        Alert.alert("Sucesso", "Feriado registrado para hoje com sucesso!");
-      }
-    } catch (error) {
-      console.error("Erro ao cadastrar feriado:", error);
-      Alert.alert("Erro", "Não foi possível registrar o feriado.");
     }
   };
 
@@ -308,10 +280,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
 
     try {
-      const response = await axios.post(
-        "http://192.168.1.55:3001/feriados",
-        novoFeriado
-      );
+      const response = await axios.post(`${API_URL}/feriados`, novoFeriado);
       if (response.data.success) {
         Alert.alert("Sucesso", "Feriado cadastrado com sucesso!");
         setNovoFeriado({ data: "", tarefa_id: null });
@@ -326,9 +295,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const removerFeriado = async (id) => {
     try {
-      const response = await axios.delete(
-        `http://192.168.1.55:3001/feriados/${id}`
-      );
+      const response = await axios.delete(`${API_URL}/feriados/${id}`);
       if (response.data.success) {
         Alert.alert("Sucesso", "Feriado removido com sucesso!");
         buscarFeriados();
@@ -343,7 +310,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const buscarTarefas = async () => {
     try {
       const response = await axios.get(
-        "http://192.168.1.55:3001/tarefas/agendamento"
+        `${API_URL}/tarefas/agendamento`,
+        API_CONFIG
       );
       if (response.data.success) {
         setTarefas(response.data.tarefas);
@@ -361,7 +329,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
         nome: novaTarefaNome,
         intervalo: novaTarefaIntervalo,
       });
-      const response = await axios.post("http://192.168.1.55:3001/tarefas", {
+      const response = await axios.post(`${API_URL}/tarefas`, {
         nome: novaTarefaNome,
         intervalo_dias: parseInt(novaTarefaIntervalo),
       });
@@ -388,7 +356,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
     try {
       const response = await axios.put(
-        `http://192.168.1.55:3001/tarefas/${tarefaSelecionada.id}/intervalo`,
+        `${API_URL}/tarefas/${tarefaSelecionada.id}/intervalo`,
         { intervalo_dias: intervalo }
       );
 
@@ -406,7 +374,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Deletar tarefa
   const deletarTarefa = async (tarefaId: number) => {
     try {
-      await axios.delete(`http://192.168.1.55:3001/tarefas/${tarefaId}`);
+      await axios.delete(`${API_URL}/tarefas/${tarefaId}`, API_CONFIG);
       buscarTarefas();
     } catch (error) {
       console.error("Erro ao excluir tarefa:", error);
@@ -418,7 +386,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const alternarPausa = async (tarefa: Tarefa) => {
     try {
       const response = await axios.put(
-        `http://192.168.1.55:3001/tarefas/${tarefa.id}/pausar`,
+        `${API_URL}/tarefas/${tarefa.id}/pausar`,
         { esta_pausada: !tarefa.esta_pausada }
       );
       if (response.data.success) {
@@ -437,7 +405,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para buscar pessoas
   const buscarPessoas = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/users");
+      const response = await axios.get(`${API_URL}/users`, API_CONFIG);
       console.log("Resposta buscarPessoas:", response.data); // Log para debug
       setPessoas(response.data);
     } catch (error) {
@@ -471,7 +439,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
     setPessoas(novaLista); // Atualiza também o estado pessoas
 
     try {
-      await axios.post("http://192.168.1.55:3001/pessoas/reordenar", {
+      await axios.post(`${API_URL}/pessoas/reordenar`, {
         ordem: novaLista.map((pessoa) => pessoa.id),
       });
     } catch (error) {
@@ -483,13 +451,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para iniciar viagem
   const iniciarViagem = async (usuarioId: number) => {
     try {
-      const response = await axios.post(
-        "http://192.168.1.55:3001/viagens/iniciar",
-        {
-          usuario_id: usuarioId,
-          data_saida: new Date().toISOString().split("T")[0],
-        }
-      );
+      const response = await axios.post(`${API_URL}/viagens/iniciar`, {
+        usuario_id: usuarioId,
+        data_saida: new Date().toISOString().split("T")[0],
+      });
 
       if (response.data.success) {
         Alert.alert("Sucesso", "Viagem iniciada com sucesso!");
@@ -543,7 +508,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
         );
         try {
           const viagemResponse = await axios.get(
-            `http://192.168.1.55:3001/viagens/atual/${pessoaSelecionada.id}`
+            `${API_URL}/viagens/atual/${pessoaSelecionada.id}`,
+            API_CONFIG
           );
           if (viagemResponse.data.success) {
             viagemId = viagemResponse.data.viagem_id;
@@ -580,14 +546,14 @@ const Admin = ({ navigation }: { navigation: any }) => {
       const formattedDate = convertDateToDatabaseFormat(dataRetorno);
 
       console.log("Preparando requisição:", {
-        url: `http://192.168.1.55:3001/viagens/${viagemId}/retorno`,
+        url: `${API_URL}/viagens/${viagemId}/retorno`,
         payload: {
           data_retorno: formattedDate,
         },
       });
 
       const response = await axios.post(
-        `http://192.168.1.55:3001/viagens/${viagemId}/retorno`,
+        `${API_URL}/viagens/${viagemId}/retorno`,
         {
           data_retorno: formattedDate,
         }
@@ -616,32 +582,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
           ? error.message
           : "Não foi possível registrar o retorno.");
       Alert.alert("Erro", mensagemErro);
-    }
-  };
-
-  // Remover feriado de hoje
-  const removerFeriadoHoje = async (tarefaId: number) => {
-    const hoje = new Date().toISOString().split("T")[0];
-    try {
-      console.log("Removendo feriado da tarefa:", tarefaId);
-      const response = await axios.delete(
-        `http://192.168.1.55:3001/feriados/${tarefaId}/${hoje}`
-      );
-      if (response.data.success) {
-        console.log("Feriado removido com sucesso");
-        // Atualiza o estado imediatamente
-        setTarefas((prevTarefas) =>
-          prevTarefas.map((tarefa) =>
-            tarefa.id === tarefaId
-              ? { ...tarefa, tem_feriado_hoje: false }
-              : tarefa
-          )
-        );
-        Alert.alert("Sucesso", "Feriado removido com sucesso!");
-      }
-    } catch (error) {
-      console.error("Erro ao remover feriado:", error);
-      Alert.alert("Erro", "Não foi possível remover o feriado.");
     }
   };
 
@@ -698,7 +638,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para buscar usuários disponíveis
   const buscarUsuariosDisponiveis = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/users");
+      const response = await axios.get(`${API_URL}/users`, API_CONFIG);
       const usuariosAtivos = response.data.filter((user) => !user.em_viagem);
       setUsuariosDisponiveis(usuariosAtivos);
     } catch (error) {
@@ -716,7 +656,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
     try {
       const response = await axios.post(
-        `http://192.168.1.55:3001/tarefas/${tarefaParaReatribuir.id}/reatribuir`,
+        `${API_URL}/tarefas/${tarefaParaReatribuir.id}/reatribuir`,
         { novo_responsavel_id: novoResponsavelId }
       );
 
@@ -1027,9 +967,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
           onRequestClose={() => setIsGerenciarTarefasVisible(false)}
         >
           <View style={styles.modalContainer}>
-            <View
-              style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}
-            >
+            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
               <Text style={styles.modalTitle}>Gerenciamento de Tarefas</Text>
 
               <TouchableOpacity
@@ -1098,39 +1036,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     >
                       Status: {tarefa.esta_pausada ? "Pausada" : "Ativa"}
                     </Text>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.button,
-                        styles.feriadoButton,
-                        tarefa.tem_feriado_hoje && styles.feriadoAtivo,
-                      ]}
-                      onPress={() => {
-                        if (tarefa.tem_feriado_hoje) {
-                          removerFeriadoHoje(tarefa.id);
-                        } else {
-                          adicionarFeriadoHoje(tarefa.id);
-                        }
-                      }}
-                    >
-                      <View style={styles.feriadoContent}>
-                        <FontAwesome
-                          name="calendar"
-                          size={16}
-                          color={tarefa.tem_feriado_hoje ? "#fff" : "#000"}
-                        />
-                        <Text
-                          style={[
-                            styles.buttonText,
-                            tarefa.tem_feriado_hoje && styles.feriadoAtivoText,
-                          ]}
-                        >
-                          {tarefa.tem_feriado_hoje
-                            ? "Desmarcar Feriado"
-                            : "Marcar como Feriado"}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
                   </View>
                 ))}
               </ScrollView>
@@ -1238,9 +1143,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
           onRequestClose={() => setIsGerenciarPessoasVisible(false)}
         >
           <View style={styles.modalContainer}>
-            <View
-              style={[styles.modalContent, { width: "90%", maxHeight: "90%" }]}
-            >
+            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
               <Text style={styles.modalTitle}>Gerenciamento de Pessoas</Text>
 
               <ScrollView>
@@ -1517,6 +1420,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
     padding: 20,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
@@ -1689,7 +1593,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
-    width: "100%",
+    width: "90%",
+    maxWidth: 500,
+    alignSelf: "center",
   },
   modalButtons: {
     flexDirection: "row",
@@ -1774,10 +1680,7 @@ const styles = StyleSheet.create({
   setaDisabled: {
     opacity: 0.5,
   },
-  feriadoButton: {
-    backgroundColor: "#ffc107",
-    marginTop: 10,
-  },
+
   tarefaAcoes: {
     flexDirection: "row",
     gap: 15,
@@ -1785,17 +1688,7 @@ const styles = StyleSheet.create({
   acaoButton: {
     padding: 5,
   },
-  feriadoContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  feriadoAtivo: {
-    backgroundColor: "#28a745",
-  },
-  feriadoAtivoText: {
-    color: "#fff",
-  },
+
   usuariosList: {
     maxHeight: 200,
     marginVertical: 10,
