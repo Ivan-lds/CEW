@@ -64,6 +64,9 @@ const Home = () => {
   const [carregando, setCarregando] = useState(true);
   const [tarefaExecutando, setTarefaExecutando] = useState<number | null>(null);
   const [buscandoTarefas, setBuscandoTarefas] = useState(false);
+  const [aniversarios, setAniversarios] = useState<
+    { id: number; name: string; aniversario: string }[]
+  >([]);
   const navigation = useNavigation();
 
   const notifications: Notification[] = [
@@ -71,6 +74,73 @@ const Home = () => {
     { id: "2", message: "💰 Caixa: Novo relatório financeiro disponível." },
     { id: "3", message: "✍ Reunião agendada para 10/04/2025." },
   ];
+
+  // Função para buscar aniversários
+  const buscarAniversarios = async () => {
+    try {
+      console.log("Buscando aniversários atualizados...");
+
+      // Usar uma configuração com cache desabilitado para garantir dados atualizados
+      const configComCache = {
+        ...API_CONFIG,
+        headers: {
+          ...API_CONFIG.headers,
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      };
+
+      const response = await axios.get(`${API_URL}/users`, configComCache);
+
+      if (response.data) {
+        // Filtrar apenas usuários que têm aniversário cadastrado
+        const aniversariosUsuarios = response.data
+          .filter((user) => user.aniversario)
+          .map((user) => ({
+            id: user.id,
+            name: user.name,
+            aniversario: formatarData(user.aniversario),
+          }));
+
+        console.log(`Encontrados ${aniversariosUsuarios.length} aniversários`);
+
+        // Verificar se houve mudança na lista de aniversários
+        const aniversariosAnteriores = JSON.stringify(
+          aniversarios.map((a) => a.id)
+        );
+        const aniversariosNovos = JSON.stringify(
+          aniversariosUsuarios.map((a) => a.id)
+        );
+
+        if (aniversariosAnteriores !== aniversariosNovos) {
+          console.log("Lista de aniversários atualizada");
+          setAniversarios(aniversariosUsuarios);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao buscar aniversários:", error);
+    }
+  };
+
+  // Efeito para atualizar os dados quando a tela recebe foco
+  useEffect(() => {
+    // Função para atualizar todos os dados
+    const atualizarDados = async () => {
+      if (userId) {
+        await Promise.all([buscarTarefasUsuario(userId), buscarAniversarios()]);
+      }
+    };
+
+    // Adicionar listener para quando a tela receber foco
+    const unsubscribe = navigation.addListener("focus", () => {
+      console.log("Home recebeu foco - atualizando dados");
+      atualizarDados();
+    });
+
+    // Limpar o listener quando o componente for desmontado
+    return unsubscribe;
+  }, [navigation, userId]);
 
   useEffect(() => {
     const carregarDadosUsuario = async () => {
@@ -90,6 +160,7 @@ const Home = () => {
           setUserName(storedUserName);
           setIsAdmin(role === "admin");
           await buscarTarefasUsuario(parseInt(storedUserId));
+          await buscarAniversarios(); // Buscar aniversários
         }
       } catch (error) {
         console.error("Erro ao carregar dados do usuário:", error);
@@ -100,10 +171,11 @@ const Home = () => {
 
     carregarDadosUsuario();
 
-    // Atualiza as tarefas a cada minuto
+    // Atualiza as tarefas e aniversários a cada minuto
     const interval = setInterval(() => {
       if (userId) {
         buscarTarefasUsuario(userId);
+        buscarAniversarios(); // Também atualiza os aniversários periodicamente
       }
     }, 60000);
 
@@ -416,9 +488,20 @@ const Home = () => {
             {/* Painel de Aniversários */}
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>🎉 Aniversários</Text>
-              <Text>- João Silva: 15/04</Text>
-              <Text>- Maria Santos: 20/08</Text>
-              <Text>- Ana Costa: 25/12</Text>
+              {aniversarios.length > 0 ? (
+                aniversarios.map((aniversario) => (
+                  <Text key={aniversario.id} style={styles.aniversarioItem}>
+                    - {aniversario.name}:{" "}
+                    <Text style={styles.aniversarioData}>
+                      {aniversario.aniversario}
+                    </Text>
+                  </Text>
+                ))
+              ) : (
+                <Text style={styles.semAniversariosText}>
+                  Nenhum aniversário cadastrado.
+                </Text>
+              )}
             </View>
 
             {/* Painel de Controle de Gás */}
@@ -686,6 +769,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#6c757d",
     opacity: 0.7,
     transform: [{ scale: 0.95 }],
+  },
+  aniversarioItem: {
+    fontSize: 16,
+    color: "#333",
+    marginVertical: 4,
+  },
+  aniversarioData: {
+    fontWeight: "bold",
+    color: "#1382AB",
+  },
+  semAniversariosText: {
+    fontSize: 16,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 10,
   },
 });
 
