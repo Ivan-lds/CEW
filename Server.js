@@ -2395,7 +2395,7 @@ app.listen(3001, "0.0.0.0", () => {
   console.log(
     "Servidor rodando na porta 3001 e acessível em todas as interfaces de rede"
   );
-  console.log("Endereços de acesso:");
+  console.log("\nEndereços de acesso:");
   console.log(" - Local: http://localhost:3001");
-  console.log(" - Rede: http://192.168.1.2:3001 (se este for seu IP na rede)");
+  console.log(" - Rede: http://192.168.1.2:3001 (se este for seu IP na rede)\n");
 });

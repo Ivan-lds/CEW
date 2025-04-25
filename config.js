@@ -8,10 +8,10 @@
 // export const API_URL = "http://192.168.1.55:3001";
 
 // Opção 2: Para desenvolvimento local, use localhost
-export const API_URL = "http://localhost:3001";
+// export const API_URL = "http://localhost:3001";
 
 // Opção 2: Para emuladores Android, use 10.0.2.2 (que redireciona para o localhost da máquina host)
-// export const API_URL = 'http://10.0.2.2:3001';
+export const API_URL = "http://192.168.1.55:3001";
 
 // Opção 3: Para o iOS Simulator, use localhost
 // export const API_URL = 'http://localhost:3001';
