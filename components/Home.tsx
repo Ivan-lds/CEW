@@ -73,14 +73,19 @@ const Home = ({ route }: { route: any }) => {
   const [tarefaExecutando, setTarefaExecutando] = useState<number | null>(null);
   const [buscandoTarefas, setBuscandoTarefas] = useState(false);
   const [aniversarios, setAniversarios] = useState<
-    { id: number; name: string; aniversario: string }[]
+    {
+      id: number;
+      name: string;
+      aniversario: string;
+      aniversario_original: string;
+    }[]
   >([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
   const navigation = useNavigation();
 
   // Função para formatar data no padrão dd-mm-yyyy
-  const formatarData = (dataString) => {
+  const formatarData = (dataString: string): string => {
     if (!dataString) return "";
 
     try {
@@ -96,6 +101,87 @@ const Home = ({ route }: { route: any }) => {
     }
   };
 
+  // Função para formatar data no padrão dd-mm (apenas dia e mês)
+  const formatarDataDiaMes = (dataString: string): string => {
+    if (!dataString) return "";
+
+    try {
+      const data = new Date(dataString);
+      const dia = data.getDate().toString().padStart(2, "0");
+      const mes = (data.getMonth() + 1).toString().padStart(2, "0");
+
+      return `${dia}-${mes}`;
+    } catch (error) {
+      console.error("Erro ao formatar data (dia-mês):", error);
+      return dataString;
+    }
+  };
+
+  // Função para verificar o status do aniversário (hoje, passado ou futuro)
+  const verificarStatusAniversario = (
+    dataAniversario: string
+  ): "hoje" | "passado" | "futuro" => {
+    if (!dataAniversario) return "futuro";
+
+    try {
+      // Obter a data atual
+      const hoje = new Date();
+      const diaAtual = hoje.getDate();
+      const mesAtual = hoje.getMonth() + 1; // Janeiro é 0
+
+      // Converter a data do aniversário para um objeto Date
+      const data = new Date(dataAniversario);
+      const diaAniversario = data.getDate();
+      const mesAniversario = data.getMonth() + 1; // Janeiro é 0
+
+      // Verificar se é 1º de janeiro (reinício do ano)
+      // Exceção: se alguém faz aniversário em 1º de janeiro, mantém verde
+      if (diaAtual === 1 && mesAtual === 1) {
+        console.log(
+          `Verificando aniversário em 1º de janeiro: ${diaAniversario}-${mesAniversario}`
+        );
+
+        // Se a pessoa faz aniversário em 1º de janeiro, mantém verde
+        if (diaAniversario === 1 && mesAniversario === 1) {
+          console.log(`Aniversário em 1º de janeiro - mantendo VERDE`);
+          return "hoje";
+        }
+
+        // Para todos os outros, reinicia para futuro (azul)
+        console.log(`Reiniciando status para AZUL (futuro) no início do ano`);
+        return "futuro";
+      }
+
+      // Verificar se é hoje (dia atual = dia do aniversário)
+      if (diaAtual === diaAniversario && mesAtual === mesAniversario) {
+        console.log(
+          `Aniversário é HOJE (${diaAniversario}-${mesAniversario}) - VERDE`
+        );
+        return "hoje";
+      }
+
+      // Verificar se já passou no ano atual
+      if (
+        mesAtual > mesAniversario ||
+        (mesAtual === mesAniversario && diaAtual > diaAniversario)
+      ) {
+        console.log(
+          `Aniversário já passou (${diaAniversario}-${mesAniversario}) - VERMELHO`
+        );
+        return "passado";
+      }
+
+      // Se não é hoje e não passou no ano atual, então é futuro
+      console.log(
+        `Aniversário ainda não chegou (${diaAniversario}-${mesAniversario}) - AZUL`
+      );
+      return "futuro";
+    } catch (error) {
+      console.error("Erro ao verificar status do aniversário:", error);
+      return "futuro"; // Em caso de erro, assume futuro
+    }
+  };
+
   // Função para buscar aniversários
   const buscarAniversarios = async () => {
     try {
@@ -107,21 +193,22 @@ const Home = ({ route }: { route: any }) => {
       if (response.data) {
         // Filtrar apenas usuários que têm aniversário cadastrado
         const aniversariosUsuarios = response.data
-          .filter((user) => user.aniversario)
-          .map((user) => ({
+          .filter((user: any) => user.aniversario)
+          .map((user: any) => ({
             id: user.id,
             name: user.name,
-            aniversario: formatarData(user.aniversario),
+            aniversario: formatarDataDiaMes(user.aniversario), // Usando a nova função para mostrar apenas dia e mês
+            aniversario_original: user.aniversario, // Guardar a data original para comparação
           }));
 
         console.log(`Encontrados ${aniversariosUsuarios.length} aniversários`);
 
         // Verificar se houve mudança na lista de aniversários
         const aniversariosAnteriores = JSON.stringify(
-          aniversarios.map((a) => a.id)
+          aniversarios.map((a: any) => a.id)
         );
         const aniversariosNovos = JSON.stringify(
-          aniversariosUsuarios.map((a) => a.id)
+          aniversariosUsuarios.map((a: any) => a.id)
         );
 
         if (aniversariosAnteriores !== aniversariosNovos) {
@@ -169,7 +256,7 @@ const Home = ({ route }: { route: any }) => {
         console.log("Departamento do usuário:", userDepartamento);
         console.log(
           "Notificações antes da filtragem:",
-          notificacoesFormatadas.map((n) => ({
+          notificacoesFormatadas.map((n: any) => ({
             id: n.id,
             departamento: n.departamento,
             mensagem: n.mensagem.substring(0, 20) + "...",
@@ -735,12 +822,24 @@ const Home = ({ route }: { route: any }) => {
               <Text style={styles.panelTitle}>🎉 Aniversários</Text>
               {aniversarios.length > 0 ? (
                 aniversarios.map((aniversario) => (
-                  <Text key={aniversario.id} style={styles.aniversarioItem}>
-                    - {aniversario.name}:{" "}
-                    <Text style={styles.aniversarioData}>
+                  <View key={aniversario.id} style={styles.aniversarioItem}>
+                    <Text style={styles.aniversarioNome}>
+                      - {aniversario.name}:
+                    </Text>
+                    <Text
+                      style={[
+                        styles.aniversarioData,
+                        verificarStatusAniversario(
+                          aniversario.aniversario_original
+                        ) === "hoje" && styles.aniversarioHoje,
+                        verificarStatusAniversario(
+                          aniversario.aniversario_original
+                        ) === "passado" && styles.aniversarioPassado,
+                      ]}
+                    >
                       {aniversario.aniversario}
                     </Text>
-                  </Text>
+                  </View>
                 ))
               ) : (
                 <Text style={styles.semAniversariosText}>
@@ -1049,13 +1148,30 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
   aniversarioItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: 4,
+    paddingRight: 5,
+  },
+  aniversarioNome: {
     fontSize: 16,
     color: "#333",
-    marginVertical: 4,
+    flex: 1,
+    marginRight: 10, // Adiciona um espaço entre o nome e a data
   },
   aniversarioData: {
     fontWeight: "bold",
-    color: "#1382AB",
+    color: "#1382AB", // Azul para aniversários futuros
+    fontSize: 16,
+    textAlign: "right",
+    minWidth: 50, // Garante um espaço mínimo para a data
+  },
+  aniversarioHoje: {
+    color: "#28a745", // Verde para aniversário de hoje
+  },
+  aniversarioPassado: {
+    color: "#dc3545", // Vermelho para aniversários que já passaram
   },
   semAniversariosText: {
     fontSize: 16,
