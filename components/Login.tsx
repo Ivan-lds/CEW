@@ -91,7 +91,7 @@ const Login = ({ navigation }: { navigation: any }) => {
         await AsyncStorage.setItem("userEmail", email);
         await AsyncStorage.setItem("userName", response.data.user.name);
         await AsyncStorage.setItem(
-          "userDepartment",
+          "departamento", // Corrigido para "departamento" em vez de "userDepartment"
           response.data.user.departamento || ""
         );
         await AsyncStorage.setItem("role", response.data.role);
@@ -109,11 +109,18 @@ const Login = ({ navigation }: { navigation: any }) => {
           response.data.role === "admin" ? "Home" : "Home"
         );
 
-        // Reseta a pilha de navegação e vai para Home
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "Home" }],
-        });
+        // Adiciona um pequeno atraso para garantir que os dados foram salvos
+        setTimeout(() => {
+          console.log(
+            "Redirecionando para a Home e atualizando notificações..."
+          );
+
+          // Reseta a pilha de navegação e vai para Home
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Home", params: { refreshNotifications: true } }],
+          });
+        }, 300);
       } else {
         Alert.alert("Erro", response.data.message || "Credenciais inválidas");
       }

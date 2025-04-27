@@ -204,10 +204,21 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetDepartment = async (department) => {
     try {
+      // Enviar para o servidor
       await axios.post(`${API_URL}/departamentos`, {
         name: selectedUser.name,
         departamento: department,
       });
+
+      // Se o usuário atual for o que está sendo modificado, atualizar o AsyncStorage
+      const userId = await AsyncStorage.getItem("userId");
+      if (userId && selectedUser.id === parseInt(userId)) {
+        await AsyncStorage.setItem("departamento", department);
+        console.log(
+          `Departamento do usuário atualizado no AsyncStorage: ${department}`
+        );
+      }
+
       Alert.alert("Sucesso", `Departamento definido como ${department}.`);
       setIsModalVisible(false);
     } catch (error) {

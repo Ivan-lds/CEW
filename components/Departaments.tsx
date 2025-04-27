@@ -1,12 +1,45 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, Button, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Button,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
+import axios from "axios";
+import { API_URL, API_CONFIG } from "../config";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Departaments = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [message, setMessage] = useState("");
+  const [userId, setUserId] = useState<number | null>(null);
+  const [userName, setUserName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const sendNotification = () => {
+  // Carregar dados do usuário ao montar o componente
+  useEffect(() => {
+    const carregarDadosUsuario = async () => {
+      try {
+        const storedUserId = await AsyncStorage.getItem("userId");
+        const storedUserName = await AsyncStorage.getItem("userName");
+
+        if (storedUserId && storedUserName) {
+          setUserId(parseInt(storedUserId));
+          setUserName(storedUserName);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do usuário:", error);
+      }
+    };
+
+    carregarDadosUsuario();
+  }, []);
+
+  const sendNotification = async () => {
     if (!selectedDepartment) {
       Alert.alert("Erro", "Por favor, selecione um departamento.");
       return;
@@ -15,10 +48,53 @@ const Departaments = () => {
       Alert.alert("Erro", "Por favor, escreva uma mensagem.");
       return;
     }
-    Alert.alert(
-      "Notificação Enviada",
-      `Departamento: ${selectedDepartment}\nMensagem: ${message}`
-    );
+
+    setLoading(true);
+
+    try {
+      console.log("Enviando notificação:", {
+        mensagem: message,
+        departamento: selectedDepartment,
+        remetente_id: userId,
+        remetente_nome: userName,
+      });
+
+      // Enviar notificação para o servidor
+      const response = await axios.post(
+        `${API_URL}/notificacoes`,
+        {
+          mensagem: message,
+          departamento: selectedDepartment,
+          remetente_id: userId,
+          remetente_nome: userName,
+        },
+        API_CONFIG
+      );
+
+      if (response.data.success) {
+        Alert.alert(
+          "Sucesso",
+          `Mensagem enviada com sucesso para o departamento ${selectedDepartment}!`
+        );
+
+        // Limpar campos após envio
+        setMessage("");
+        setSelectedDepartment("");
+      } else {
+        Alert.alert(
+          "Erro",
+          "Não foi possível enviar a mensagem. Tente novamente."
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao enviar notificação:", error);
+      Alert.alert(
+        "Erro",
+        "Ocorreu um erro ao enviar a mensagem. Verifique sua conexão."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,6 +104,15 @@ const Departaments = () => {
 
       {/* Lista de Departamentos */}
       <View style={styles.departmentsContainer}>
+        <TouchableOpacity
+          style={[
+            styles.departmentButton,
+            selectedDepartment === "Todos" && styles.selectedButton,
+          ]}
+          onPress={() => setSelectedDepartment("Todos")}
+        >
+          <Text style={styles.departmentText}>📢 Todos os Departamentos</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
@@ -112,7 +197,11 @@ const Departaments = () => {
         editable={!!selectedDepartment}
       />
 
-      <Button title="Enviar Notificação" onPress={sendNotification} />
+      {loading ? (
+        <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
+      ) : (
+        <Button title="Enviar Notificação" onPress={sendNotification} />
+      )}
     </View>
   );
 };
@@ -164,6 +253,9 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
     backgroundColor: "#fff",
+  },
+  loader: {
+    marginVertical: 20,
   },
 });
 

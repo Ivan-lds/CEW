@@ -20,8 +20,13 @@ import axios from "axios";
 import { API_URL, API_CONFIG } from "../config";
 
 interface Notification {
-  id: string;
-  message: string;
+  id: number;
+  mensagem: string;
+  departamento: string;
+  remetente_id?: number;
+  remetente_nome?: string;
+  data_envio: string;
+  lida: boolean;
 }
 
 interface Tarefa {
@@ -53,11 +58,14 @@ const formatarData = (dataString: string | null): string => {
   }
 };
 
-const Home = () => {
+const Home = ({ route }: { route: any }) => {
+  // Verificar se há parâmetros de rota para atualizar notificações
+  const refreshNotifications = route?.params?.refreshNotifications;
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [userDepartamento, setUserDepartamento] = useState<string | null>(null);
   const [tarefasHoje, setTarefasHoje] = useState<Tarefa[]>([]);
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [emViagem, setEmViagem] = useState(false);
@@ -67,13 +75,9 @@ const Home = () => {
   const [aniversarios, setAniversarios] = useState<
     { id: number; name: string; aniversario: string }[]
   >([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
   const navigation = useNavigation();
-
-  const notifications: Notification[] = [
-    { id: "1", message: "🔧 Manutenção: Solicitação de conserto enviada!" },
-    { id: "2", message: "💰 Caixa: Novo relatório financeiro disponível." },
-    { id: "3", message: "✍ Reunião agendada para 10/04/2025." },
-  ];
 
   // Função para formatar data no padrão dd-mm-yyyy
   const formatarData = (dataString) => {
@@ -130,11 +134,137 @@ const Home = () => {
     }
   };
 
+  // Variável para controlar se já está buscando notificações
+  const [buscandoNotificacoes, setBuscandoNotificacoes] = useState(false);
+
+  // Função para buscar notificações
+  const buscarNotificacoes = async () => {
+    // Evita múltiplas chamadas simultâneas
+    if (buscandoNotificacoes) {
+      console.log("Já está buscando notificações. Aguarde...");
+      return;
+    }
+
+    try {
+      setBuscandoNotificacoes(true);
+      console.log("Buscando notificações...");
+
+      if (!userDepartamento) {
+        console.log("Usuário sem departamento definido");
+      } else {
+        console.log(`Departamento do usuário: ${userDepartamento}`);
+      }
+
+      // Buscar notificações do servidor
+      const response = await axios.get(`${API_URL}/notificacoes`, API_CONFIG);
+
+      if (response.data) {
+        // Formatar as notificações
+        const notificacoesFormatadas = response.data.map((notif: any) => ({
+          ...notif,
+          data_envio: formatarData(notif.data_envio),
+        }));
+
+        // Adicionar logs para depuração
+        console.log("Departamento do usuário:", userDepartamento);
+        console.log(
+          "Notificações antes da filtragem:",
+          notificacoesFormatadas.map((n) => ({
+            id: n.id,
+            departamento: n.departamento,
+            mensagem: n.mensagem.substring(0, 20) + "...",
+          }))
+        );
+
+        // Filtrar notificações para mostrar apenas as do departamento do usuário ou para todos
+        const notificacoesFiltradas = notificacoesFormatadas.filter(
+          (notif: any) => {
+            // Se a notificação for para "Todos", mostrar para todos os usuários
+            if (notif.departamento === "Todos") {
+              console.log(`Notificação ${notif.id} é para todos - incluída`);
+              return true;
+            }
+
+            // Se o usuário tiver um departamento definido, mostrar apenas as notificações para esse departamento
+            if (userDepartamento) {
+              const match = notif.departamento === userDepartamento;
+              console.log(
+                `Notificação ${notif.id} para ${
+                  notif.departamento
+                }, usuário é ${userDepartamento} - ${
+                  match ? "incluída" : "excluída"
+                }`
+              );
+              return match;
+            }
+
+            // Se o usuário não tiver departamento, não mostrar notificações específicas de departamento
+            console.log(
+              `Notificação ${notif.id} excluída porque usuário não tem departamento`
+            );
+            return false;
+          }
+        );
+
+        console.log(
+          `Total de notificações: ${notificacoesFormatadas.length}, Filtradas: ${notificacoesFiltradas.length}`
+        );
+
+        setNotifications(notificacoesFiltradas);
+
+        // Contar notificações não lidas
+        const naoLidas = notificacoesFiltradas.filter(
+          (n: any) => !n.lida
+        ).length;
+        setNotificacoesNaoLidas(naoLidas);
+
+        console.log(
+          `Encontradas ${notificacoesFormatadas.length} notificações (${naoLidas} não lidas)`
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao buscar notificações:", error);
+    } finally {
+      setBuscandoNotificacoes(false);
+    }
+  };
+
+  // Função para marcar notificação como lida
+  const marcarComoLida = async (id: number) => {
+    try {
+      await axios.put(
+        `${API_URL}/notificacoes/${id}`,
+        {
+          lida: true,
+        },
+        API_CONFIG
+      );
+
+      // Atualizar estado local
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === id ? { ...notif, lida: true } : notif
+        )
+      );
+
+      // Atualizar contador de não lidas
+      setNotificacoesNaoLidas((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Erro ao marcar notificação como lida:", error);
+    }
+  };
+
   // Efeito para atualizar os dados quando a tela recebe foco
   useEffect(() => {
     // Função para atualizar todos os dados
     const atualizarDados = async () => {
       if (userId) {
+        console.log("Atualizando dados ao receber foco...");
+
+        // Buscar notificações primeiro para garantir que a bolinha apareça rapidamente
+        await buscarNotificacoes();
+
+        // Depois buscar o resto dos dados
         await Promise.all([buscarTarefasUsuario(userId), buscarAniversarios()]);
       }
     };
@@ -155,12 +285,17 @@ const Home = () => {
         const storedUserId = await AsyncStorage.getItem("userId");
         const storedUserName = await AsyncStorage.getItem("userName");
         const role = await AsyncStorage.getItem("role");
+        const departamento = await AsyncStorage.getItem("departamento");
 
         console.log("Dados do usuário carregados:", {
           userId: storedUserId,
           userName: storedUserName,
           role: role,
+          departamento: departamento,
         });
+
+        // Definir o departamento do usuário
+        setUserDepartamento(departamento);
 
         if (storedUserId && storedUserName) {
           setUserId(parseInt(storedUserId));
@@ -168,6 +303,7 @@ const Home = () => {
           setIsAdmin(role === "admin");
           await buscarTarefasUsuario(parseInt(storedUserId));
           await buscarAniversarios(); // Buscar aniversários
+          await buscarNotificacoes(); // Buscar notificações
         }
       } catch (error) {
         console.error("Erro ao carregar dados do usuário:", error);
@@ -178,21 +314,73 @@ const Home = () => {
 
     carregarDadosUsuario();
 
-    // Atualiza as tarefas e aniversários a cada minuto
-    const interval = setInterval(() => {
+    // Atualiza as tarefas e aniversários a cada 10 segundos
+    const tarefasInterval = setInterval(() => {
       if (userId) {
         buscarTarefasUsuario(userId);
         buscarAniversarios(); // Também atualiza os aniversários periodicamente
       }
-    }, 60000);
+    }, 10000);
 
-    return () => clearInterval(interval);
+    // Atualiza as notificações a cada 10 segundos
+    const notificacoesInterval = setInterval(() => {
+      if (userId) {
+        buscarNotificacoes(); // Atualiza as notificações com maior frequência
+        console.log("Verificando novas notificações...");
+      }
+    }, 10000);
+
+    return () => {
+      clearInterval(tarefasInterval);
+      clearInterval(notificacoesInterval);
+    };
   }, []);
 
   // Adicionar um useEffect para debug do estado isAdmin
   useEffect(() => {
     console.log("Estado isAdmin atualizado:", isAdmin);
   }, [isAdmin]);
+
+  // Adicionar um useEffect para atualizar as notificações quando o userId ou userDepartamento mudar
+  useEffect(() => {
+    if (userId) {
+      console.log(
+        "userId ou userDepartamento mudou, atualizando notificações..."
+      );
+      buscarNotificacoes();
+    }
+  }, [userId, userDepartamento]);
+
+  // Adicionar um useEffect para buscar notificações imediatamente quando o componente for montado
+  useEffect(() => {
+    // Esta função será executada apenas uma vez quando o componente for montado
+    const buscarNotificacoesImediatas = async () => {
+      // Pequeno atraso para garantir que os dados do usuário já foram carregados
+      setTimeout(async () => {
+        if (userId) {
+          console.log(
+            "Buscando notificações imediatamente após a montagem do componente..."
+          );
+          await buscarNotificacoes();
+        }
+      }, 500);
+    };
+
+    buscarNotificacoesImediatas();
+  }, []); // Array de dependências vazio significa que será executado apenas uma vez
+
+  // Adicionar um useEffect para buscar notificações quando o parâmetro refreshNotifications for true
+  useEffect(() => {
+    if (refreshNotifications && userId) {
+      console.log(
+        "Parâmetro refreshNotifications detectado, atualizando notificações..."
+      );
+      // Pequeno atraso para garantir que os dados do usuário já foram carregados
+      setTimeout(() => {
+        buscarNotificacoes();
+      }, 1000);
+    }
+  }, [refreshNotifications, userId]);
 
   const buscarTarefasUsuario = async (id: number) => {
     // Evita múltiplas chamadas simultâneas
@@ -258,7 +446,48 @@ const Home = () => {
   };
 
   const toggleModal = () => {
-    setIsModalVisible(!isModalVisible);
+    // Se estiver abrindo o modal
+    if (!isModalVisible) {
+      setIsModalVisible(true);
+      // Não marca as notificações como lidas ao abrir o modal
+    }
+    // Se estiver fechando o modal
+    else {
+      setIsModalVisible(false);
+      // Opcional: marcar notificações como lidas ao fechar o modal
+      // Descomente as linhas abaixo se quiser marcar como lidas ao fechar
+      /*
+      notifications.forEach((notif) => {
+        if (!notif.lida) {
+          marcarComoLida(notif.id);
+        }
+      });
+      */
+    }
+  };
+
+  // Função para obter o ícone do departamento
+  const getDepartmentIcon = (departamento: string): string => {
+    switch (departamento) {
+      case "Todos":
+        return "📢";
+      case "Presidente":
+      case "Vice-Presidente":
+        return "👨‍💼";
+      case "Secretário":
+      case "Vice-Secretário":
+        return "✍️";
+      case "Manutenção":
+        return "🔧";
+      case "Compras":
+        return "🛒";
+      case "Fiscalização":
+        return "👀";
+      case "Caixa":
+        return "💰";
+      default:
+        return "📝";
+    }
   };
 
   const executarTarefa = async (tarefaId: number) => {
@@ -397,7 +626,16 @@ const Home = () => {
           onPress={toggleModal}
           style={{ padding: 10, cursor: "pointer" }}
         >
-          <FontAwesome name="bell" size={24} color="#1382AB" />
+          <View style={styles.notificationIconContainer}>
+            <FontAwesome name="bell" size={24} color="#1382AB" />
+            {notificacoesNaoLidas > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}
+                </Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -552,15 +790,47 @@ const Home = () => {
       <Modal visible={isModalVisible} animationType="slide" transparent={false}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>📨 Notificações</Text>
-          <FlatList
-            data={notifications}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: Notification }) => (
-              <View style={styles.notificationItem}>
-                <Text style={styles.notificationText}>{item.message}</Text>
-              </View>
-            )}
-          />
+          {notifications.length === 0 ? (
+            <View style={styles.emptyNotifications}>
+              <Text style={styles.emptyNotificationsText}>
+                Nenhuma notificação disponível
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={notifications}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }: { item: Notification }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.notificationItem,
+                    !item.lida && styles.notificationUnread,
+                  ]}
+                  onPress={() => marcarComoLida(item.id)}
+                >
+                  <View style={styles.notificationHeader}>
+                    <Text style={styles.notificationDepartment}>
+                      {getDepartmentIcon(item.departamento)} {item.departamento}
+                    </Text>
+                    <Text style={styles.notificationDate}>
+                      {item.data_envio}
+                    </Text>
+                  </View>
+                  <Text style={styles.notificationText}>{item.mensagem}</Text>
+                  {item.remetente_nome && (
+                    <Text style={styles.notificationSender}>
+                      Enviado por: {item.remetente_nome}
+                    </Text>
+                  )}
+                  {!item.lida && (
+                    <Text style={styles.notificationStatus}>
+                      Não lida • Toque para marcar como lida
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          )}
           <TouchableOpacity style={styles.closeButton} onPress={toggleModal}>
             <Text style={styles.closeButtonText}>Fechar</Text>
           </TouchableOpacity>
@@ -659,6 +929,7 @@ const styles = StyleSheet.create({
   notificationItem: {
     backgroundColor: "#fff",
     padding: 15,
+    width: 300,
     borderRadius: 5,
     marginVertical: 10,
     borderWidth: 1,
@@ -792,6 +1063,68 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
     marginTop: 10,
+  },
+  notificationIconContainer: {
+    position: "relative",
+  },
+  notificationBadge: {
+    position: "absolute",
+    right: -6,
+    top: -6,
+    backgroundColor: "red",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notificationBadgeText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  emptyNotifications: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  emptyNotificationsText: {
+    fontSize: 16,
+    color: "#666",
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  notificationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+  },
+  notificationDepartment: {
+    fontWeight: "bold",
+    color: "#1382AB",
+    fontSize: 16,
+  },
+  notificationDate: {
+    color: "#666",
+    fontSize: 14,
+  },
+  notificationSender: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 5,
+    fontStyle: "italic",
+  },
+  notificationStatus: {
+    fontSize: 12,
+    color: "#1382AB",
+    marginTop: 5,
+    fontStyle: "italic",
+  },
+  notificationUnread: {
+    backgroundColor: "#f0f9ff",
+    borderLeftWidth: 3,
+    borderLeftColor: "#1382AB",
   },
 });
 

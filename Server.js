@@ -2398,6 +2398,130 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
   });
 });
 
+/* Endpoints para gerenciar notificações */
+
+// Enviar mensagem para departamento (cria uma notificação)
+app.post("/notificacoes", (req, res) => {
+  const { mensagem, departamento, remetente_id, remetente_nome } = req.body;
+
+  if (!mensagem || !departamento) {
+    return res.status(400).send({
+      success: false,
+      message: "Mensagem e departamento são obrigatórios",
+    });
+  }
+
+  const sql =
+    "INSERT INTO notificacoes (mensagem, departamento, remetente_id, remetente_nome) VALUES (?, ?, ?, ?)";
+  db.query(
+    sql,
+    [mensagem, departamento, remetente_id, remetente_nome],
+    (err, result) => {
+      if (err) {
+        console.error("Erro ao criar notificação:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao criar notificação",
+          error: err.message,
+        });
+      }
+
+      res.status(201).send({
+        success: true,
+        message: "Mensagem enviada com sucesso!",
+        notificacaoId: result.insertId,
+      });
+    }
+  );
+});
+
+// Buscar notificações por departamento
+app.get("/notificacoes", (req, res) => {
+  const { departamento } = req.query;
+
+  let sql = "SELECT * FROM notificacoes";
+  let params = [];
+
+  if (departamento) {
+    sql += " WHERE departamento = ?";
+    params.push(departamento);
+  }
+
+  sql += " ORDER BY data_envio DESC LIMIT 50";
+
+  db.query(sql, params, (err, results) => {
+    if (err) {
+      console.error("Erro ao buscar notificações:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao buscar notificações",
+        error: err.message,
+      });
+    }
+
+    res.send(results);
+  });
+});
+
+// Marcar notificação como lida
+app.put("/notificacoes/:id", (req, res) => {
+  const { id } = req.params;
+  const { lida } = req.body;
+
+  const sql = "UPDATE notificacoes SET lida = ? WHERE id = ?";
+  db.query(sql, [lida, id], (err, result) => {
+    if (err) {
+      console.error("Erro ao atualizar notificação:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao atualizar notificação",
+        error: err.message,
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Notificação não encontrada",
+      });
+    }
+
+    res.send({
+      success: true,
+      message: "Notificação atualizada com sucesso!",
+    });
+  });
+});
+
+// Excluir notificação
+app.delete("/notificacoes/:id", (req, res) => {
+  const { id } = req.params;
+
+  const sql = "DELETE FROM notificacoes WHERE id = ?";
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error("Erro ao excluir notificação:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao excluir notificação",
+        error: err.message,
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Notificação não encontrada",
+      });
+    }
+
+    res.send({
+      success: true,
+      message: "Notificação excluída com sucesso!",
+    });
+  });
+});
+
 app.listen(3001, "0.0.0.0", () => {
   console.log(
     "Servidor rodando na porta 3001 e acessível em todas as interfaces de rede"
