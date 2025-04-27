@@ -14,7 +14,14 @@ app.use(
   cors({
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Accept",
+      "Cache-Control",
+      "Pragma",
+      "Expires",
+    ],
   })
 );
 
@@ -2397,5 +2404,7 @@ app.listen(3001, "0.0.0.0", () => {
   );
   console.log("\nEndereços de acesso:");
   console.log(" - Local: http://localhost:3001");
-  console.log(" - Rede: http://192.168.1.2:3001 (se este for seu IP na rede)\n");
+  console.log(
+    " - Rede: http://192.168.1.2:3001 (se este for seu IP na rede)\n"
+  );
 });

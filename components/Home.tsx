@@ -75,23 +75,30 @@ const Home = () => {
     { id: "3", message: "✍ Reunião agendada para 10/04/2025." },
   ];
 
+  // Função para formatar data no padrão dd-mm-yyyy
+  const formatarData = (dataString) => {
+    if (!dataString) return "";
+
+    try {
+      const data = new Date(dataString);
+      const dia = data.getDate().toString().padStart(2, "0");
+      const mes = (data.getMonth() + 1).toString().padStart(2, "0");
+      const ano = data.getFullYear();
+
+      return `${dia}-${mes}-${ano}`;
+    } catch (error) {
+      console.error("Erro ao formatar data:", error);
+      return dataString;
+    }
+  };
+
   // Função para buscar aniversários
   const buscarAniversarios = async () => {
     try {
       console.log("Buscando aniversários atualizados...");
 
-      // Usar uma configuração com cache desabilitado para garantir dados atualizados
-      const configComCache = {
-        ...API_CONFIG,
-        headers: {
-          ...API_CONFIG.headers,
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      };
-
-      const response = await axios.get(`${API_URL}/users`, configComCache);
+      // Usar a configuração padrão da API para evitar problemas de CORS
+      const response = await axios.get(`${API_URL}/users`, API_CONFIG);
 
       if (response.data) {
         // Filtrar apenas usuários que têm aniversário cadastrado
