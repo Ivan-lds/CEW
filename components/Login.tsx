@@ -14,6 +14,7 @@ import { TouchableOpacity } from "react-native-gesture-handler";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL, API_CONFIG } from "../config";
+import { FontAwesome } from "@expo/vector-icons";
 
 const Login = ({ navigation }: { navigation: any }) => {
   const [email, setEmail] = useState("");
@@ -22,6 +23,7 @@ const Login = ({ navigation }: { navigation: any }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
   const [showConnectionStatus, setShowConnectionStatus] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Função para mostrar o indicador de status por 1 segundo
   const showStatusIndicator = () => {
@@ -207,13 +209,25 @@ const Login = ({ navigation }: { navigation: any }) => {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Senha"
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity
+          style={styles.eyeIcon}
+          onPress={() => setShowPassword(!showPassword)}
+        >
+          <FontAwesome
+            name={showPassword ? "eye" : "eye-slash"}
+            size={20}
+            color="#666"
+          />
+        </TouchableOpacity>
+      </View>
       <View style={styles.rememberMe}>
         <TouchableOpacity onPress={() => setRememberMe(!rememberMe)}>
           <Text style={styles.rememberMeText}>
@@ -307,6 +321,23 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 15,
     backgroundColor: "#fff",
+  },
+  passwordContainer: {
+    width: "80%",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    marginBottom: 15,
+    backgroundColor: "#fff",
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 10,
+  },
+  eyeIcon: {
+    padding: 10,
   },
   rememberMe: {
     flexDirection: "row",

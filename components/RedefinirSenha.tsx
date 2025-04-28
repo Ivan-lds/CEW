@@ -3,11 +3,14 @@ import { useState } from "react";
 import { View, Text, TextInput, StyleSheet, Alert } from "react-native";
 import { TouchableOpacity } from "react-native-gesture-handler";
 import axios from "axios";
+import { FontAwesome } from "@expo/vector-icons";
 
 const RedefinirSenha = ({ navigation }: { navigation: any }) => {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleRedefinirSenha = () => {
     if (!email || !newPassword || !confirmPassword) {
@@ -32,7 +35,8 @@ const RedefinirSenha = ({ navigation }: { navigation: any }) => {
       .catch((error) => {
         Alert.alert(
           "Erro",
-          error.response?.data?.message || "Erro ao redefinir senha. Tente novamente."
+          error.response?.data?.message ||
+            "Erro ao redefinir senha. Tente novamente."
         );
         console.error(error);
       });
@@ -49,20 +53,44 @@ const RedefinirSenha = ({ navigation }: { navigation: any }) => {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Nova Senha"
-        secureTextEntry
-        value={newPassword}
-        onChangeText={setNewPassword}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Confirme a Nova Senha"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Nova Senha"
+          secureTextEntry={!showNewPassword}
+          value={newPassword}
+          onChangeText={setNewPassword}
+        />
+        <TouchableOpacity
+          style={styles.eyeIcon}
+          onPress={() => setShowNewPassword(!showNewPassword)}
+        >
+          <FontAwesome
+            name={showNewPassword ? "eye" : "eye-slash"}
+            size={20}
+            color="#666"
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Confirme a Nova Senha"
+          secureTextEntry={!showConfirmPassword}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        <TouchableOpacity
+          style={styles.eyeIcon}
+          onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+        >
+          <FontAwesome
+            name={showConfirmPassword ? "eye" : "eye-slash"}
+            size={20}
+            color="#666"
+          />
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity style={styles.button} onPress={handleRedefinirSenha}>
         <Text style={styles.buttonText}>Redefinir Senha</Text>
@@ -102,6 +130,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: "#fff",
   },
+  passwordContainer: {
+    width: "80%",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 10,
+  },
+  eyeIcon: {
+    padding: 10,
+  },
   button: {
     backgroundColor: "#007bff",
     borderRadius: 5,
@@ -121,4 +166,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RedefinirSenha; 
+export default RedefinirSenha;
