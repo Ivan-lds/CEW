@@ -698,7 +698,9 @@ const Home = ({ route }: { route: any }) => {
         Alert.alert(
           "Tarefa Concluída",
           `A tarefa foi marcada como concluída com sucesso!\n\nPróximo responsável: ${
-            response.data.novoResponsavelId || "Não definido"
+            response.data.novoResponsavelNome ||
+            response.data.novoResponsavelId ||
+            "Não definido"
           }`,
           [
             {

@@ -1023,8 +1023,20 @@ app.post("/tarefas/:id/executar", async (req, res) => {
       });
     }
 
+    // Buscar o nome do próximo responsável
+    const proximoResponsavelNome = await new Promise((resolve, reject) => {
+      db.query(
+        "SELECT name FROM users WHERE id = ?",
+        [proximoResponsavelId],
+        (err, results) => {
+          if (err) reject(err);
+          else resolve(results.length > 0 ? results[0].name : "Desconhecido");
+        }
+      );
+    });
+
     console.log(
-      `Passando tarefa ${id} do responsável ${tarefaInfo.responsavel_id} para ${proximoResponsavelId}`
+      `Passando tarefa ${id} do responsável ${tarefaInfo.responsavel_id} para ${proximoResponsavelId} (${proximoResponsavelNome})`
     );
 
     // Registra a execução
@@ -1067,6 +1079,7 @@ app.post("/tarefas/:id/executar", async (req, res) => {
         "Execução registrada com sucesso e tarefa atribuída ao próximo responsável!",
       execucaoId: resultExecucao.insertId,
       novoResponsavelId: proximoResponsavelId,
+      novoResponsavelNome: proximoResponsavelNome,
     });
   } catch (error) {
     console.error("Erro ao processar execução de tarefa:", error);
