@@ -238,7 +238,8 @@ app.post("/remove-admin", (req, res) => {
 
 /*Usuários*/
 app.get("/users", (req, res) => {
-  const sql = "SELECT * FROM users";
+  // Modificado para ordenar os usuários pela coluna 'ordem'
+  const sql = "SELECT * FROM users ORDER BY ordem ASC";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).send(err);
     res.send(results);

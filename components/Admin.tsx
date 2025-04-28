@@ -104,7 +104,14 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   // Sincronizar estados de pessoas
   useEffect(() => {
-    setPessoasOrdenadas(pessoas);
+    // Ordenar as pessoas pela coluna 'ordem' antes de atualizar o estado
+    const pessoasOrdenadas = [...pessoas].sort((a, b) => {
+      // Se a ordem não estiver definida, usar um valor alto para colocar no final
+      const ordemA = a.ordem || 9999;
+      const ordemB = b.ordem || 9999;
+      return ordemA - ordemB;
+    });
+    setPessoasOrdenadas(pessoasOrdenadas);
   }, [pessoas]);
 
   // Função para buscar usuários do banco de dados
