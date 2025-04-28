@@ -49,6 +49,30 @@ const Login = ({ navigation }: { navigation: any }) => {
     };
   }, []);
 
+  // Carrega as credenciais salvas quando o componente é montado
+  useEffect(() => {
+    const carregarCredenciaisSalvas = async () => {
+      try {
+        // Verifica se existem credenciais salvas
+        const savedEmail = await AsyncStorage.getItem("savedEmail");
+        const savedPassword = await AsyncStorage.getItem("savedPassword");
+        const savedRememberMe = await AsyncStorage.getItem("rememberMe");
+
+        if (savedEmail && savedPassword && savedRememberMe === "true") {
+          // Preenche os campos com as credenciais salvas
+          setEmail(savedEmail);
+          setPassword(savedPassword);
+          setRememberMe(true);
+          console.log("Credenciais carregadas do armazenamento local");
+        }
+      } catch (error) {
+        console.error("Erro ao carregar credenciais salvas:", error);
+      }
+    };
+
+    carregarCredenciaisSalvas();
+  }, []);
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Erro", "Por favor, preencha todos os campos.");
@@ -98,6 +122,20 @@ const Login = ({ navigation }: { navigation: any }) => {
         );
         await AsyncStorage.setItem("role", response.data.role);
         await AsyncStorage.setItem("userId", response.data.user.id.toString());
+
+        // Salvar credenciais se "Lembrar-me" estiver marcado
+        if (rememberMe) {
+          await AsyncStorage.setItem("savedEmail", email);
+          await AsyncStorage.setItem("savedPassword", password);
+          await AsyncStorage.setItem("rememberMe", "true");
+          console.log("Credenciais salvas para uso futuro");
+        } else {
+          // Se não estiver marcado, remove as credenciais salvas
+          await AsyncStorage.removeItem("savedEmail");
+          await AsyncStorage.removeItem("savedPassword");
+          await AsyncStorage.removeItem("rememberMe");
+          console.log("Credenciais removidas do armazenamento local");
+        }
 
         console.log("Informações do usuário armazenadas:");
         console.log("Email:", email);

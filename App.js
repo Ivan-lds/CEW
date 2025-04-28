@@ -39,7 +39,22 @@ export default function App() {
 
   const handleLogout = async (navigation) => {
     try {
+      // Salvar as credenciais antes de limpar o AsyncStorage
+      const savedEmail = await AsyncStorage.getItem("savedEmail");
+      const savedPassword = await AsyncStorage.getItem("savedPassword");
+      const rememberMe = await AsyncStorage.getItem("rememberMe");
+
+      // Limpar todas as informações do AsyncStorage
       await AsyncStorage.clear();
+
+      // Se o "Lembrar-me" estiver ativado, restaurar as credenciais salvas
+      if (rememberMe === "true" && savedEmail && savedPassword) {
+        await AsyncStorage.setItem("savedEmail", savedEmail);
+        await AsyncStorage.setItem("savedPassword", savedPassword);
+        await AsyncStorage.setItem("rememberMe", "true");
+        console.log("Credenciais preservadas após logout");
+      }
+
       Alert.alert("Logout", "Você saiu da sua conta com sucesso!");
       navigation.navigate("Login");
     } catch (error) {
