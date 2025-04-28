@@ -89,11 +89,11 @@ const Budget = () => {
   );
 
   return (
-    <SafeAreaView>
-      <View style={styles.container}>
-        <Text style={styles.title}>📊 Status do Caixa</Text>
-      </View>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
+        <View style={styles.container}>
+          <Text style={styles.title}>📊 Status do Caixa</Text>
+        </View>
         <View style={styles.container}>
           {/* Painel de Total */}
           <View style={styles.panel}>
@@ -111,39 +111,37 @@ const Budget = () => {
           <View>
             <Text style={styles.subtitle}>Entradas</Text>
           </View>
-          <FlatList
-            data={monthlyEntries}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: BudgetItem }) => (
-              <TouchableOpacity
-                onPress={() => openDetails("entradas", item.month)}
-              >
-                <View style={styles.panel}>
-                  <Text style={styles.panelTitle}>{item.month}</Text>
-                  <Text style={styles.panelValue}>{item.value}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
+
+          {/* Renderizando entradas manualmente em vez de usar FlatList */}
+          {monthlyEntries.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => openDetails("entradas", item.month)}
+            >
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>{item.month}</Text>
+                <Text style={styles.panelValue}>{item.value}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
 
           {/* Painel de Saídas por Mês */}
           <View>
             <Text style={styles.subtitle}>Saídas</Text>
           </View>
-          <FlatList
-            data={monthlyExits}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }: { item: BudgetItem }) => (
-              <TouchableOpacity
-                onPress={() => openDetails("saídas", item.month)}
-              >
-                <View style={styles.panel}>
-                  <Text style={styles.panelTitle}>{item.month}</Text>
-                  <Text style={styles.panelValue}>{item.value}</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
+
+          {/* Renderizando saídas manualmente em vez de usar FlatList */}
+          {monthlyExits.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              onPress={() => openDetails("saídas", item.month)}
+            >
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>{item.month}</Text>
+                <Text style={styles.panelValue}>{item.value}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
 
           {/* Modal de Detalhes */}
           <Modal
@@ -172,6 +170,9 @@ const Budget = () => {
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 20,
@@ -182,7 +183,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
     textAlign: "center",
-    marginBottom: 20,
   },
   subtitle: {
     fontSize: 22,
@@ -192,7 +192,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   content: {
-    height: 650,
+    flex: 1,
+  },
+  flatListContainer: {
+    height: 200,
+    marginBottom: 10,
   },
   panel: {
     backgroundColor: "#fff",

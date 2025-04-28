@@ -575,11 +575,15 @@ const Configs = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 {documentos.length > 0 ? (
-                  <FlatList
-                    data={documentos}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item: documento }) => (
-                      <View style={styles.documentoItem}>
+                  <ScrollView
+                    style={styles.documentosContainer}
+                    nestedScrollEnabled={true}
+                  >
+                    {documentos.map((documento) => (
+                      <View
+                        key={documento.id.toString()}
+                        style={styles.documentoItem}
+                      >
                         <View style={styles.documentoInfo}>
                           <Text style={styles.documentoNome}>
                             {documento.nome}
@@ -629,8 +633,8 @@ const Configs = ({ navigation }: { navigation: any }) => {
                           </View>
                         </View>
                       </View>
-                    )}
-                  />
+                    ))}
+                  </ScrollView>
                 ) : (
                   <Text style={styles.emptyText}>
                     Nenhum documento encontrado. Clique em "Enviar Documentos"
@@ -843,6 +847,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     textAlign: "center",
+    marginBottom: 10,
+  },
+  documentosContainer: {
+    maxHeight: 300,
     marginBottom: 10,
   },
 });

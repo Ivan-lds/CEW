@@ -1080,7 +1080,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Administração</Text>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
         {/* Seção: Dados Pessoais */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Dados Pessoais</Text>
@@ -1316,18 +1316,17 @@ const Admin = ({ navigation }: { navigation: any }) => {
         {/* Lista de usuários */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Usuários Cadastrados</Text>
-          <FlatList
-            data={users}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
+          <View>
+            {users.map((item) => (
               <TouchableOpacity
+                key={item.id.toString()}
                 onPress={() => handleUserOptions(item)}
                 style={styles.userItem}
               >
                 <Text style={styles.userText}>{item.name}</Text>
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </View>
         </View>
 
         {/* Modal para opções do usuário */}
@@ -1461,59 +1460,59 @@ const Admin = ({ navigation }: { navigation: any }) => {
             </TouchableOpacity>
           </View>
 
-          <FlatList
-            data={isOrdenacaoAtiva ? pessoasOrdenadas : pessoas}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item, index }) => (
-              <View style={styles.pessoaItem}>
-                <View style={styles.pessoaInfo}>
-                  <Text style={styles.pessoaNome}>{item.name}</Text>
-                  {item.departamento && (
-                    <Text style={styles.pessoaDepartamento}>
-                      {item.departamento}
-                    </Text>
+          <View>
+            {(isOrdenacaoAtiva ? pessoasOrdenadas : pessoas).map(
+              (item, index) => (
+                <View key={item.id.toString()} style={styles.pessoaItem}>
+                  <View style={styles.pessoaInfo}>
+                    <Text style={styles.pessoaNome}>{item.name}</Text>
+                    {item.departamento && (
+                      <Text style={styles.pessoaDepartamento}>
+                        {item.departamento}
+                      </Text>
+                    )}
+                  </View>
+                  {isOrdenacaoAtiva && (
+                    <View style={styles.setasContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.setaButton,
+                          index === 0 && styles.setaDisabled,
+                        ]}
+                        onPress={() => moverPessoa(item.id, "cima")}
+                        disabled={index === 0}
+                      >
+                        <FontAwesome
+                          name="arrow-up"
+                          size={20}
+                          color={index === 0 ? "#ccc" : "#007bff"}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.setaButton,
+                          index === pessoasOrdenadas.length - 1 &&
+                            styles.setaDisabled,
+                        ]}
+                        onPress={() => moverPessoa(item.id, "baixo")}
+                        disabled={index === pessoasOrdenadas.length - 1}
+                      >
+                        <FontAwesome
+                          name="arrow-down"
+                          size={20}
+                          color={
+                            index === pessoasOrdenadas.length - 1
+                              ? "#ccc"
+                              : "#007bff"
+                          }
+                        />
+                      </TouchableOpacity>
+                    </View>
                   )}
                 </View>
-                {isOrdenacaoAtiva && (
-                  <View style={styles.setasContainer}>
-                    <TouchableOpacity
-                      style={[
-                        styles.setaButton,
-                        index === 0 && styles.setaDisabled,
-                      ]}
-                      onPress={() => moverPessoa(item.id, "cima")}
-                      disabled={index === 0}
-                    >
-                      <FontAwesome
-                        name="arrow-up"
-                        size={20}
-                        color={index === 0 ? "#ccc" : "#007bff"}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.setaButton,
-                        index === pessoasOrdenadas.length - 1 &&
-                          styles.setaDisabled,
-                      ]}
-                      onPress={() => moverPessoa(item.id, "baixo")}
-                      disabled={index === pessoasOrdenadas.length - 1}
-                    >
-                      <FontAwesome
-                        name="arrow-down"
-                        size={20}
-                        color={
-                          index === pessoasOrdenadas.length - 1
-                            ? "#ccc"
-                            : "#007bff"
-                        }
-                      />
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
+              )
             )}
-          />
+          </View>
         </View>
 
         {/* Modal de Gerenciamento de Tarefas */}
@@ -2359,6 +2358,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     textAlign: "center",
+    marginBottom: 10,
+  },
+  flatListContainer: {
+    height: 200,
     marginBottom: 10,
   },
 });

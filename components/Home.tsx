@@ -18,7 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_URL, API_CONFIG } from "../config";
-import LaundryGas from './LaundryGas';
+import LaundryGas from "./LaundryGas";
 
 interface Notification {
   id: number;
@@ -81,6 +81,13 @@ const Home = ({ route }: { route: any }) => {
       aniversario_original: string;
     }[]
   >([]);
+  const [diasLavanderia, setDiasLavanderia] = useState<
+    {
+      id: number;
+      name: string;
+      dia_lavanderia: string;
+    }[]
+  >([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
   const navigation = useNavigation();
@@ -116,6 +123,43 @@ const Home = ({ route }: { route: any }) => {
       console.error("Erro ao formatar data (dia-mês):", error);
       return dataString;
     }
+  };
+
+  // Função para agrupar usuários por dia da semana
+  const agruparUsuariosPorDia = () => {
+    // Ordem dos dias da semana começando por domingo
+    const diasDaSemana = [
+      "Domingo",
+      "Segunda-feira",
+      "Terça-feira",
+      "Quarta-feira",
+      "Quinta-feira",
+      "Sexta-feira",
+      "Sábado",
+    ];
+
+    // Objeto para armazenar os usuários agrupados por dia
+    const usuariosPorDia: { [key: string]: string[] } = {};
+
+    // Inicializar todos os dias da semana com arrays vazios
+    diasDaSemana.forEach((dia) => {
+      usuariosPorDia[dia] = [];
+    });
+
+    // Agrupar os usuários por dia
+    diasLavanderia.forEach((usuario) => {
+      if (
+        usuario.dia_lavanderia &&
+        diasDaSemana.includes(usuario.dia_lavanderia)
+      ) {
+        usuariosPorDia[usuario.dia_lavanderia].push(usuario.name);
+      }
+    });
+
+    return diasDaSemana.map((dia) => ({
+      dia,
+      usuarios: usuariosPorDia[dia],
+    }));
   };
 
   // Função para verificar o status do aniversário (hoje, passado ou futuro)
@@ -219,6 +263,34 @@ const Home = ({ route }: { route: any }) => {
       }
     } catch (error) {
       console.error("Erro ao buscar aniversários:", error);
+    }
+  };
+
+  // Função para buscar dias de lavanderia
+  const buscarDiasLavanderia = async () => {
+    try {
+      console.log("Buscando dias de lavanderia...");
+
+      // Usar o endpoint /users que já está funcionando
+      const response = await axios.get(`${API_URL}/users`, API_CONFIG);
+
+      if (response.data) {
+        // Filtrar apenas usuários que têm dia_lavanderia definido
+        const usuariosComDia = response.data
+          .filter((user: any) => user.dia_lavanderia)
+          .map((user: any) => ({
+            id: user.id,
+            name: user.name,
+            dia_lavanderia: user.dia_lavanderia,
+          }));
+
+        console.log(
+          `Encontrados ${usuariosComDia.length} usuários com dias de lavanderia definidos`
+        );
+        setDiasLavanderia(usuariosComDia);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar dias de lavanderia:", error);
     }
   };
 
@@ -353,7 +425,11 @@ const Home = ({ route }: { route: any }) => {
         await buscarNotificacoes();
 
         // Depois buscar o resto dos dados
-        await Promise.all([buscarTarefasUsuario(userId), buscarAniversarios()]);
+        await Promise.all([
+          buscarTarefasUsuario(userId),
+          buscarAniversarios(),
+          buscarDiasLavanderia(),
+        ]);
       }
     };
 
@@ -391,6 +467,7 @@ const Home = ({ route }: { route: any }) => {
           setIsAdmin(role === "admin");
           await buscarTarefasUsuario(parseInt(storedUserId));
           await buscarAniversarios(); // Buscar aniversários
+          await buscarDiasLavanderia(); // Buscar dias de lavanderia
           await buscarNotificacoes(); // Buscar notificações
         }
       } catch (error) {
@@ -402,11 +479,12 @@ const Home = ({ route }: { route: any }) => {
 
     carregarDadosUsuario();
 
-    // Atualiza as tarefas e aniversários a cada 10 segundos
+    // Atualiza as tarefas, aniversários e dias de lavanderia a cada 10 segundos
     const tarefasInterval = setInterval(() => {
       if (userId) {
         buscarTarefasUsuario(userId);
         buscarAniversarios(); // Também atualiza os aniversários periodicamente
+        buscarDiasLavanderia(); // Também atualiza os dias de lavanderia periodicamente
       }
     }, 10000);
 
@@ -730,7 +808,8 @@ const Home = ({ route }: { route: any }) => {
       {/* Painéis da Página Inicial */}
       <ScrollView
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
+        style={styles.scrollView}
       >
         {carregando ? (
           <ActivityIndicator
@@ -813,9 +892,30 @@ const Home = ({ route }: { route: any }) => {
             {/* Painel de Roupas */}
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>🧺 Roupas</Text>
-              <Text>- João: Segunda-feira</Text>
-              <Text>- Maria: Terça-feira</Text>
-              <Text>- Ana: Quarta-feira</Text>
+              {agruparUsuariosPorDia().map((item) => (
+                <View key={item.dia} style={styles.diaLavanderiaItem}>
+                  <Text style={styles.diaLavanderiaNome}>{item.dia}:</Text>
+                  {item.usuarios.length > 0 ? (
+                    <View style={styles.usuariosContainer}>
+                      {item.usuarios.map((usuario, index) => (
+                        <Text
+                          key={index}
+                          style={[
+                            styles.usuarioItem,
+                            index === 0 && styles.usuarioPrimeiro,
+                            index === 1 && styles.usuarioSegundo,
+                            index === 2 && styles.usuarioTerceiro,
+                          ]}
+                        >
+                          {usuario}
+                        </Text>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.semUsuariosText}>Nenhum usuário</Text>
+                  )}
+                </View>
+              ))}
             </View>
 
             {/* Painel de Aniversários */}
@@ -954,6 +1054,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: StatusBar.currentHeight,
     backgroundColor: "#f8f9fa",
+    height: "100%", // Garante que ocupe toda a altura da tela
+  },
+  scrollView: {
+    flex: 1, // Ocupa todo o espaço disponível
   },
   header: {
     flexDirection: "row",
@@ -978,8 +1082,8 @@ const styles = StyleSheet.create({
   content: {
     marginTop: 10,
     paddingHorizontal: 15,
-    paddingBottom: 20,
-    height: 400,
+    paddingBottom: 80, // Aumentado para dar espaço ao menu inferior
+    flexGrow: 1, // Permite que o conteúdo cresça conforme necessário
   },
   panel: {
     backgroundColor: "#fff",
@@ -1242,6 +1346,54 @@ const styles = StyleSheet.create({
     backgroundColor: "#f0f9ff",
     borderLeftWidth: 3,
     borderLeftColor: "#1382AB",
+  },
+  diaLavanderiaItem: {
+    marginVertical: 4,
+    paddingVertical: 4,
+  },
+  diaLavanderiaNome: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 2,
+  },
+  diaLavanderiaUsuarios: {
+    fontSize: 14,
+    color: "#555",
+    marginLeft: 10,
+  },
+  semUsuariosText: {
+    fontSize: 14,
+    color: "#999",
+    fontStyle: "italic",
+    marginLeft: 10,
+  },
+  usuariosContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginLeft: 10,
+    marginTop: 5,
+  },
+  usuarioItem: {
+    fontSize: 14,
+    color: "#333",
+    marginRight: 10,
+    marginBottom: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  usuarioPrimeiro: {
+    backgroundColor: "#1382AB", // Azul (mesmo do aniversário futuro)
+    color: "#fff",
+  },
+  usuarioSegundo: {
+    backgroundColor: "#28a745", // Verde (mesmo do aniversário hoje)
+    color: "#fff",
+  },
+  usuarioTerceiro: {
+    backgroundColor: "#dc3545", // Vermelho (mesmo do aniversário passado)
+    color: "#fff",
   },
 });
 

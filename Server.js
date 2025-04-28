@@ -2742,6 +2742,34 @@ app.get("/dia-lavanderia/:name", (req, res) => {
   });
 });
 
+// Endpoint para buscar todos os usuários com seus dias de lavanderia
+app.get("/dias-lavanderia", (req, res) => {
+  console.log("Recebida solicitação para buscar todos os dias de lavanderia");
+
+  const sql =
+    "SELECT id, name, dia_lavanderia FROM users WHERE dia_lavanderia IS NOT NULL ORDER BY name";
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Erro ao buscar dias de lavanderia:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao buscar dias de lavanderia",
+        error: err.message,
+      });
+    }
+
+    console.log(
+      `Encontrados ${results.length} usuários com dias de lavanderia definidos`
+    );
+
+    res.send({
+      success: true,
+      usuarios: results,
+    });
+  });
+});
+
 app.listen(3001, "0.0.0.0", () => {
   console.log(
     "Servidor rodando na porta 3001 e acessível em todas as interfaces de rede"
