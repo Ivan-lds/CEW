@@ -51,10 +51,12 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [birthdayInput, setBirthdayInput] = useState("");
   const [departmentInput, setDepartmentInput] = useState("");
+  const [laundryDayInput, setLaundryDayInput] = useState("");
   const [userData, setUserData] = useState({
     name: "",
     email: "",
     departamento: "",
+    dia_lavanderia: "",
   });
   const [isGerenciarTarefasVisible, setIsGerenciarTarefasVisible] =
     useState(false);
@@ -224,6 +226,31 @@ const Admin = ({ navigation }: { navigation: any }) => {
     } catch (error) {
       console.error("Erro ao definir departamento:", error);
       Alert.alert("Erro", "Não foi possível definir o departamento.");
+    }
+  };
+
+  const handleSetLaundryDay = async (day) => {
+    try {
+      // Enviar para o servidor
+      await axios.post(`${API_URL}/dia-lavanderia`, {
+        name: selectedUser.name,
+        dia_lavanderia: day,
+      });
+
+      // Se o usuário atual for o que está sendo modificado, atualizar o AsyncStorage
+      const userId = await AsyncStorage.getItem("userId");
+      if (userId && selectedUser.id === parseInt(userId)) {
+        await AsyncStorage.setItem("diaLavanderia", day);
+        console.log(
+          `Dia de lavanderia do usuário atualizado no AsyncStorage: ${day}`
+        );
+      }
+
+      Alert.alert("Sucesso", `Dia de lavar roupa definido como ${day}.`);
+      setIsModalVisible(false);
+    } catch (error) {
+      console.error("Erro ao definir dia de lavar roupa:", error);
+      Alert.alert("Erro", "Não foi possível definir o dia de lavar roupa.");
     }
   };
 
@@ -627,12 +654,14 @@ const Admin = ({ navigation }: { navigation: any }) => {
       const email = await AsyncStorage.getItem("userEmail");
       const name = await AsyncStorage.getItem("userName");
       const department = await AsyncStorage.getItem("userDepartment");
+      const laundryDay = await AsyncStorage.getItem("diaLavanderia");
 
       if (email && name) {
         setUserData({
           email,
           name,
           departamento: department || "",
+          dia_lavanderia: laundryDay || "",
         });
       }
     };
@@ -1310,7 +1339,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                   Opções para {selectedUser.name}
                 </Text>
 
-                <View style={styles.inputRow}>
+                <View style={[styles.inputRow, styles.inputAniversario]}>
                   <TextInput
                     style={[styles.input, styles.flexInput]}
                     placeholder="Data de Aniversário (DD-MM-YYYY)"
@@ -1320,7 +1349,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     maxLength={10}
                   />
                   <TouchableOpacity
-                    style={styles.smallButton}
+                    style={[styles.smallButton, { marginBottom: 10 }]}
                     onPress={() => handleSetBirthday(birthdayInput)}
                   >
                     <Text style={styles.buttonText}>Enviar</Text>
@@ -1335,8 +1364,38 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     onChangeText={setDepartmentInput}
                   />
                   <TouchableOpacity
-                    style={styles.smallButton}
+                    style={[styles.smallButton, { marginBottom: 11 }]}
                     onPress={() => handleSetDepartment(departmentInput)}
+                  >
+                    <Text style={styles.buttonText}>Enviar</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.pickerContainer, styles.flexInput]}>
+                    <Picker
+                      selectedValue={laundryDayInput}
+                      onValueChange={(itemValue) =>
+                        setLaundryDayInput(itemValue)
+                      }
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Dia lavar roupa" value="" />
+                      <Picker.Item
+                        label="Segunda-feira"
+                        value="Segunda-feira"
+                      />
+                      <Picker.Item label="Terça-feira" value="Terça-feira" />
+                      <Picker.Item label="Quarta-feira" value="Quarta-feira" />
+                      <Picker.Item label="Quinta-feira" value="Quinta-feira" />
+                      <Picker.Item label="Sexta-feira" value="Sexta-feira" />
+                      <Picker.Item label="Sábado" value="Sábado" />
+                      <Picker.Item label="Domingo" value="Domingo" />
+                    </Picker>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.smallButton, { marginBottom: 12 }]}
+                    onPress={() => handleSetLaundryDay(laundryDayInput)}
                   >
                     <Text style={styles.buttonText}>Enviar</Text>
                   </TouchableOpacity>
@@ -1818,6 +1877,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f9fa",
     borderRadius: 8,
   },
+  inputAniversario: {
+    marginTop: 10,
+    marginBottom: -1,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -1828,10 +1891,13 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   pickerContainer: {
-    marginVertical: 10,
     borderWidth: 1,
-    borderColor: "#ddd",
+    width: 50,
+    height: 55,
+    padding: 0,
+    borderColor: "#777",
     borderRadius: 4,
+    marginTop: -10,
   },
   picker: {
     height: 50,
@@ -1919,13 +1985,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    padding: 10,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 10,
     textAlign: "center",
   },
   input: {
