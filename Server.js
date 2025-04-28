@@ -2323,6 +2323,150 @@ app.delete("/execucoes/tarefa/:tarefaId", (req, res) => {
   });
 });
 
+// Rotas para controle de gás - versão simplificada
+app.get("/gas/ultima-troca", (req, res) => {
+  // Usar DATE_FORMAT para garantir que a data seja retornada no formato DD-MM-YYYY
+  const sql =
+    "SELECT id, DATE_FORMAT(data, '%d-%m-%Y') as data FROM controle_gas ORDER BY data DESC LIMIT 1";
+  db.query(sql, (err, result) => {
+    if (err) {
+      console.error("Erro ao buscar última troca:", err);
+      res.status(500).send({
+        success: false,
+        message: "Erro ao buscar última troca",
+        error: err.message,
+      });
+      return;
+    }
+    res.send({
+      success: true,
+      data: result[0]?.data || null,
+      id: result[0]?.id || null,
+    });
+  });
+});
+
+// Endpoint para buscar todas as trocas de gás
+app.get("/gas/todas-trocas", (req, res) => {
+  console.log("Recebida solicitação para buscar todas as trocas de gás");
+
+  // Usar DATE_FORMAT para garantir que a data seja retornada no formato DD-MM-YYYY
+  const sql =
+    "SELECT id, DATE_FORMAT(data, '%d-%m-%Y') as data FROM controle_gas ORDER BY data DESC";
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("Erro ao buscar todas as trocas:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao buscar todas as trocas",
+        error: err.message,
+      });
+    }
+
+    console.log(`Encontradas ${results.length} trocas de gás`);
+
+    res.send({
+      success: true,
+      trocas: results,
+    });
+  });
+});
+
+app.post("/gas/registrar", (req, res) => {
+  const { data } = req.body;
+  const sql = "INSERT INTO controle_gas (data) VALUES (?)";
+  db.query(sql, [data], (err, result) => {
+    if (err) {
+      console.error("Erro ao registrar troca:", err);
+      res.status(500).send({
+        success: false,
+        message: "Erro ao registrar troca",
+        error: err.message,
+      });
+      return;
+    }
+    console.log("Troca registrada com sucesso. Data:", data);
+    res.send({
+      success: true,
+      message: "Troca registrada com sucesso",
+    });
+  });
+});
+
+// Endpoint super simples para deletar o último registro de gás
+app.get("/gas/deletar-ultimo", (req, res) => {
+  console.log("Recebida solicitação para deletar último registro de gás");
+
+  // Executar a exclusão diretamente
+  db.query(
+    "DELETE FROM controle_gas ORDER BY data DESC LIMIT 1",
+    (err, result) => {
+      if (err) {
+        console.error("Erro ao deletar registro:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao deletar registro",
+          error: err.message,
+        });
+      }
+
+      console.log("Resultado da exclusão:", result);
+      console.log("Linhas afetadas:", result.affectedRows);
+
+      res.send({
+        success: true,
+        message: "Registro deletado com sucesso",
+        affectedRows: result.affectedRows,
+      });
+    }
+  );
+});
+
+// Endpoint para deletar um registro específico pelo ID
+app.delete("/gas/deletar/:id", (req, res) => {
+  const id = req.params.id;
+  console.log(
+    `Recebida solicitação para deletar registro de gás com ID: ${id}`
+  );
+
+  // Verificar se o ID é válido
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).send({
+      success: false,
+      message: "ID inválido",
+    });
+  }
+
+  // Executar a exclusão pelo ID
+  db.query("DELETE FROM controle_gas WHERE id = ?", [id], (err, result) => {
+    if (err) {
+      console.error("Erro ao deletar registro:", err);
+      return res.status(500).send({
+        success: false,
+        message: "Erro ao deletar registro",
+        error: err.message,
+      });
+    }
+
+    console.log("Resultado da exclusão:", result);
+    console.log("Linhas afetadas:", result.affectedRows);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send({
+        success: false,
+        message: "Registro não encontrado",
+      });
+    }
+
+    res.send({
+      success: true,
+      message: "Registro deletado com sucesso",
+      affectedRows: result.affectedRows,
+    });
+  });
+});
+
 // Reatribuir tarefa manualmente
 app.post("/tarefas/:id/reatribuir", (req, res) => {
   const { id } = req.params;

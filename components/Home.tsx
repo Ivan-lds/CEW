@@ -18,6 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_URL, API_CONFIG } from "../config";
+import LaundryGas from './LaundryGas';
 
 interface Notification {
   id: number;
@@ -851,7 +852,7 @@ const Home = ({ route }: { route: any }) => {
             {/* Painel de Controle de Gás */}
             <View style={styles.panel}>
               <Text style={styles.panelTitle}>⛽ Controle de Gás</Text>
-              <Text>- Última reposição: 15/03/2025</Text>
+              <LaundryGas />
             </View>
           </>
         )}
