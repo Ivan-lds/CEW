@@ -315,8 +315,11 @@ const Home = ({ route }: { route: any }) => {
         console.log(`Departamento do usuário: ${userDepartamento}`);
       }
 
-      // Buscar notificações do servidor
-      const response = await axios.get(`${API_URL}/notificacoes`, API_CONFIG);
+      // Buscar notificações do servidor com o ID do usuário
+      const response = await axios.get(
+        `${API_URL}/notificacoes?usuario_id=${userId}`,
+        API_CONFIG
+      );
 
       if (response.data) {
         // Formatar as notificações
@@ -392,10 +395,16 @@ const Home = ({ route }: { route: any }) => {
   // Função para marcar notificação como lida
   const marcarComoLida = async (id: number) => {
     try {
+      if (!userId) {
+        console.error("ID do usuário não disponível");
+        return;
+      }
+
       await axios.put(
         `${API_URL}/notificacoes/${id}`,
         {
           lida: true,
+          usuario_id: userId,
         },
         API_CONFIG
       );
@@ -411,6 +420,10 @@ const Home = ({ route }: { route: any }) => {
       setNotificacoesNaoLidas((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Erro ao marcar notificação como lida:", error);
+      Alert.alert(
+        "Erro",
+        "Não foi possível marcar a notificação como lida. Tente novamente."
+      );
     }
   };
 

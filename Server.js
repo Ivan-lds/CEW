@@ -66,6 +66,44 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) throw err;
   console.log("Conectado ao MySQL!");
+
+  // Criar tabela notificacoes_lidas se não existir
+  const createNotificacoesLidasTable = `
+    CREATE TABLE IF NOT EXISTS notificacoes_lidas (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      notificacao_id INT NOT NULL,
+      usuario_id INT NOT NULL,
+      lida BOOLEAN DEFAULT FALSE,
+      data_leitura TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_notificacao_usuario (notificacao_id, usuario_id),
+      FOREIGN KEY (notificacao_id) REFERENCES notificacoes(id) ON DELETE CASCADE,
+      FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+  `;
+
+  // Remover a coluna lida da tabela notificacoes se ela existir
+  const alterNotificacoesTable = `
+    ALTER TABLE notificacoes DROP COLUMN IF EXISTS lida
+  `;
+
+  db.query(createNotificacoesLidasTable, (err, result) => {
+    if (err) {
+      console.error("Erro ao criar tabela notificacoes_lidas:", err);
+    } else {
+      console.log("Tabela notificacoes_lidas verificada/criada com sucesso");
+
+      // Após criar a tabela notificacoes_lidas, remover a coluna lida da tabela notificacoes
+      db.query(alterNotificacoesTable, (err, result) => {
+        if (err) {
+          console.error("Erro ao alterar tabela notificacoes:", err);
+        } else {
+          console.log(
+            "Coluna 'lida' removida da tabela notificacoes (se existia)"
+          );
+        }
+      });
+    }
+  });
 });
 
 /* Cadastro */
@@ -2862,17 +2900,30 @@ app.post("/notificacoes", (req, res) => {
 
 // Buscar notificações por departamento
 app.get("/notificacoes", (req, res) => {
-  const { departamento } = req.query;
+  const { departamento, usuario_id } = req.query;
 
-  let sql = "SELECT * FROM notificacoes";
-  let params = [];
+  if (!usuario_id) {
+    return res.status(400).send({
+      success: false,
+      message: "ID do usuário é obrigatório",
+    });
+  }
+
+  // Consulta SQL que busca notificações e verifica se foram lidas pelo usuário específico
+  let sql = `
+    SELECT n.*,
+           CASE WHEN nl.lida IS NULL THEN FALSE ELSE nl.lida END as lida
+    FROM notificacoes n
+    LEFT JOIN notificacoes_lidas nl ON n.id = nl.notificacao_id AND nl.usuario_id = ?
+  `;
+  let params = [usuario_id];
 
   if (departamento) {
-    sql += " WHERE departamento = ?";
+    sql += " WHERE n.departamento = ?";
     params.push(departamento);
   }
 
-  sql += " ORDER BY data_envio DESC LIMIT 50";
+  sql += " ORDER BY n.data_envio DESC LIMIT 50";
 
   db.query(sql, params, (err, results) => {
     if (err) {
@@ -2891,29 +2942,86 @@ app.get("/notificacoes", (req, res) => {
 // Marcar notificação como lida
 app.put("/notificacoes/:id", (req, res) => {
   const { id } = req.params;
-  const { lida } = req.body;
+  const { lida, usuario_id } = req.body;
 
-  const sql = "UPDATE notificacoes SET lida = ? WHERE id = ?";
-  db.query(sql, [lida, id], (err, result) => {
+  if (!usuario_id) {
+    return res.status(400).send({
+      success: false,
+      message: "ID do usuário é obrigatório",
+    });
+  }
+
+  // Verificar se a notificação existe
+  const checkSql = "SELECT id FROM notificacoes WHERE id = ?";
+  db.query(checkSql, [id], (err, results) => {
     if (err) {
-      console.error("Erro ao atualizar notificação:", err);
+      console.error("Erro ao verificar notificação:", err);
       return res.status(500).send({
         success: false,
-        message: "Erro ao atualizar notificação",
+        message: "Erro ao verificar notificação",
         error: err.message,
       });
     }
 
-    if (result.affectedRows === 0) {
+    if (results.length === 0) {
       return res.status(404).send({
         success: false,
         message: "Notificação não encontrada",
       });
     }
 
-    res.send({
-      success: true,
-      message: "Notificação atualizada com sucesso!",
+    // Verificar se já existe um registro para esta notificação e usuário
+    const checkLidaSql =
+      "SELECT * FROM notificacoes_lidas WHERE notificacao_id = ? AND usuario_id = ?";
+    db.query(checkLidaSql, [id, usuario_id], (err, results) => {
+      if (err) {
+        console.error("Erro ao verificar status de leitura:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao verificar status de leitura",
+          error: err.message,
+        });
+      }
+
+      if (results.length > 0) {
+        // Já existe um registro, atualizar
+        const updateSql =
+          "UPDATE notificacoes_lidas SET lida = ? WHERE notificacao_id = ? AND usuario_id = ?";
+        db.query(updateSql, [lida, id, usuario_id], (err, result) => {
+          if (err) {
+            console.error("Erro ao atualizar status de leitura:", err);
+            return res.status(500).send({
+              success: false,
+              message: "Erro ao atualizar status de leitura",
+              error: err.message,
+            });
+          }
+
+          res.send({
+            success: true,
+            message: "Status de leitura atualizado com sucesso!",
+          });
+        });
+      } else {
+        // Não existe registro, inserir novo
+        const insertSql =
+          "INSERT INTO notificacoes_lidas (notificacao_id, usuario_id, lida) VALUES (?, ?, ?)";
+        db.query(insertSql, [id, usuario_id, lida], (err, result) => {
+          if (err) {
+            console.error("Erro ao inserir status de leitura:", err);
+            return res.status(500).send({
+              success: false,
+              message: "Erro ao inserir status de leitura",
+              error: err.message,
+            });
+          }
+
+          res.send({
+            success: true,
+            message: "Status de leitura registrado com sucesso!",
+          });
+        });
+      }
     });
   });
 });
