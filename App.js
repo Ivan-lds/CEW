@@ -16,6 +16,7 @@ import Tasks from "./components/Tasks";
 import Departaments from "./components/Departaments";
 import LaundryGas from "./components/LaundryGas";
 import Caixa from "./components/Caixa";
+import Calculadora from "./components/Calculadora";
 import Configs from "./components/Configs";
 import Login from "./components/Login";
 import Cadastro from "./components/Cadastro";

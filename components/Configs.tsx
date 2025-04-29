@@ -24,6 +24,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
+import Calculadora from "./Calculadora";
 
 const Configs = ({ navigation }: { navigation: any }) => {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
@@ -38,12 +39,21 @@ const Configs = ({ navigation }: { navigation: any }) => {
   const [documentos, setDocumentos] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isCalculadoraVisible, setIsCalculadoraVisible] = useState(false);
+  const [isCalculadoraModalVisible, setIsCalculadoraModalVisible] =
+    useState(false);
 
   useEffect(() => {
     const loadUserData = async () => {
       const email = await AsyncStorage.getItem("userEmail");
       const name = await AsyncStorage.getItem("userName");
       const department = await AsyncStorage.getItem("userDepartment");
+      const departamento = await AsyncStorage.getItem("departamento");
+
+      // Verificar se o usuário é do departamento "Caixa"
+      if (departamento === "Caixa") {
+        setIsCalculadoraVisible(true);
+      }
 
       if (email && name) {
         setUserData({
@@ -526,6 +536,19 @@ const Configs = ({ navigation }: { navigation: any }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Seção: Calculadora - Visível apenas para usuários do departamento Caixa */}
+      {isCalculadoraVisible && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>🧮 Calculadora de Despesas</Text>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => setIsCalculadoraModalVisible(true)}
+          >
+            <Text style={styles.buttonText}>Abrir Calculadora</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Modal de Gerenciamento de Documentos */}
       <Modal
         visible={isDocumentosModalVisible}
@@ -651,6 +674,28 @@ const Configs = ({ navigation }: { navigation: any }) => {
               <Text style={styles.buttonText}>Fechar</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Modal da Calculadora */}
+      <Modal
+        visible={isCalculadoraModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setIsCalculadoraModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "#f8f9fa", padding: 16 }}>
+          <Text style={styles.modalTitle}>Calculadora de Despesas</Text>
+
+          {/* Renderizar o componente Calculadora diretamente */}
+          <Calculadora />
+
+          <TouchableOpacity
+            style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+            onPress={() => setIsCalculadoraModalVisible(false)}
+          >
+            <Text style={styles.buttonText}>Fechar</Text>
+          </TouchableOpacity>
         </View>
       </Modal>
     </View>

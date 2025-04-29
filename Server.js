@@ -283,59 +283,262 @@ app.post("/remove-user", (req, res) => {
     const userId = results[0].id;
     console.log("ID do usuário encontrado:", userId);
 
-    // Primeiro deleta os registros relacionados na tabela tarefas
-    const deleteTarefasSql = "DELETE FROM tarefas WHERE responsavel_id = ?";
-    db.query(deleteTarefasSql, [userId], (err, result) => {
+    // Usar transação para garantir que todas as operações sejam executadas ou nenhuma
+    db.beginTransaction((err) => {
       if (err) {
-        console.error("Erro ao remover tarefas relacionadas:", err);
+        console.error("Erro ao iniciar transação:", err);
         return res.status(500).send({
           success: false,
-          message: "Erro ao remover tarefas relacionadas",
+          message: "Erro ao iniciar transação",
           error: err.message,
         });
       }
 
-      console.log("Tarefas relacionadas removidas com sucesso");
-
-      // Depois deleta os registros relacionados na tabela roupas
-      const deleteRoupasSql = "DELETE FROM roupas WHERE usuario_id = ?";
-      db.query(deleteRoupasSql, [userId], (err, result) => {
+      // 1. Primeiro, remover registros de execucoes_tarefas onde o usuário é responsável
+      const deleteExecucoesSql =
+        "DELETE FROM execucoes_tarefas WHERE responsavel_id = ?";
+      db.query(deleteExecucoesSql, [userId], (err) => {
         if (err) {
-          console.error("Erro ao remover registros de roupas:", err);
-          return res.status(500).send({
-            success: false,
-            message: "Erro ao remover registros de roupas",
-            error: err.message,
+          return db.rollback(() => {
+            console.error("Erro ao remover execuções de tarefas:", err);
+            res.status(500).send({
+              success: false,
+              message: "Erro ao remover execuções de tarefas",
+              error: err.message,
+            });
           });
         }
 
-        console.log("Registros de roupas removidos com sucesso");
+        console.log("Execuções de tarefas removidas com sucesso");
 
-        // Por fim, deleta o usuário
-        const deleteUserSql = "DELETE FROM users WHERE id = ?";
-        db.query(deleteUserSql, [userId], (err, result) => {
+        // 2. Remover registros de execucoes_tarefas relacionados às tarefas do usuário
+        const deleteExecucoesTarefasSql = `
+          DELETE FROM execucoes_tarefas
+          WHERE tarefa_id IN (SELECT id FROM tarefas WHERE responsavel_id = ?)
+        `;
+        db.query(deleteExecucoesTarefasSql, [userId], (err) => {
           if (err) {
-            console.error("Erro ao remover usuário:", err);
-            return res.status(500).send({
-              success: false,
-              message: "Erro ao remover usuário",
-              error: err.message,
+            return db.rollback(() => {
+              console.error(
+                "Erro ao remover execuções relacionadas às tarefas do usuário:",
+                err
+              );
+              res.status(500).send({
+                success: false,
+                message:
+                  "Erro ao remover execuções relacionadas às tarefas do usuário",
+                error: err.message,
+              });
             });
           }
 
-          /*Redefinir Senha*/
-          const redefinirSenha =
-            "UPDATE users SET password = '123456' WHERE id = ?";
-          db.query(redefinirSenha, [userId], (err, result) => {
-            if (err) {
-              console.error("Erro ao redefinir senha:", err);
-            }
-          });
+          console.log(
+            "Execuções relacionadas às tarefas do usuário removidas com sucesso"
+          );
 
-          console.log("Usuário removido com sucesso:", name);
-          res.send({
-            success: true,
-            message: "Usuário removido com sucesso!",
+          // 3. Remover registros de feriados relacionados às tarefas do usuário
+          const deleteFeriadosSql = `
+            DELETE FROM feriados
+            WHERE tarefa_id IN (SELECT id FROM tarefas WHERE responsavel_id = ?)
+          `;
+          db.query(deleteFeriadosSql, [userId], (err) => {
+            if (err) {
+              return db.rollback(() => {
+                console.error(
+                  "Erro ao remover feriados relacionados às tarefas do usuário:",
+                  err
+                );
+                res.status(500).send({
+                  success: false,
+                  message:
+                    "Erro ao remover feriados relacionados às tarefas do usuário",
+                  error: err.message,
+                });
+              });
+            }
+
+            console.log(
+              "Feriados relacionados às tarefas do usuário removidos com sucesso"
+            );
+
+            // 4. Remover tarefas do usuário
+            const deleteTarefasSql =
+              "DELETE FROM tarefas WHERE responsavel_id = ?";
+            db.query(deleteTarefasSql, [userId], (err) => {
+              if (err) {
+                return db.rollback(() => {
+                  console.error("Erro ao remover tarefas do usuário:", err);
+                  res.status(500).send({
+                    success: false,
+                    message: "Erro ao remover tarefas do usuário",
+                    error: err.message,
+                  });
+                });
+              }
+
+              console.log("Tarefas do usuário removidas com sucesso");
+
+              // 5. Remover registros de roupas do usuário
+              const deleteRoupasSql = "DELETE FROM roupas WHERE usuario_id = ?";
+              db.query(deleteRoupasSql, [userId], (err) => {
+                if (err) {
+                  return db.rollback(() => {
+                    console.error("Erro ao remover registros de roupas:", err);
+                    res.status(500).send({
+                      success: false,
+                      message: "Erro ao remover registros de roupas",
+                      error: err.message,
+                    });
+                  });
+                }
+
+                console.log("Registros de roupas removidos com sucesso");
+
+                // 5.5. Remover registros de transações do caixa relacionadas ao usuário
+                const deleteTransacoesSql =
+                  "DELETE FROM caixa_transacoes WHERE usuario_id = ?";
+                db.query(deleteTransacoesSql, [userId], (err) => {
+                  if (err) {
+                    // Se ocorrer um erro, pode ser porque a coluna não existe ou não há registros
+                    // Nesse caso, vamos apenas continuar com a exclusão do usuário
+                    console.log(
+                      "Aviso: Não foi possível remover transações do caixa. Continuando com a exclusão do usuário."
+                    );
+                  } else {
+                    console.log("Transações do caixa removidas com sucesso");
+                  }
+
+                  // 6. Remover notificações relacionadas ao usuário
+                  // Como a tabela notificacoes tem ON DELETE SET NULL na coluna remetente_id,
+                  // não precisamos excluir as notificações, apenas atualizar o remetente_id para NULL
+                  const updateNotificacoesSql =
+                    "UPDATE notificacoes SET remetente_id = NULL WHERE remetente_id = ?";
+                  db.query(updateNotificacoesSql, [userId], (err) => {
+                    if (err) {
+                      console.log(
+                        "Aviso: Não foi possível atualizar notificações. Continuando com a exclusão do usuário."
+                      );
+
+                      // 7. Remover registros de viagens do usuário
+                      const deleteViagensSql =
+                        "DELETE FROM viagens WHERE usuario_id = ?";
+                      db.query(deleteViagensSql, [userId], (err) => {
+                        if (err) {
+                          console.log(
+                            "Aviso: Não foi possível remover viagens. Continuando com a exclusão do usuário."
+                          );
+                        } else {
+                          console.log(
+                            "Viagens do usuário removidas com sucesso"
+                          );
+                        }
+
+                        // 8. Remover o usuário
+                        const deleteUserSql = "DELETE FROM users WHERE id = ?";
+                        db.query(deleteUserSql, [userId], (err) => {
+                          if (err) {
+                            return db.rollback(() => {
+                              console.error("Erro ao remover usuário:", err);
+                              res.status(500).send({
+                                success: false,
+                                message: "Erro ao remover usuário",
+                                error: err.message,
+                              });
+                            });
+                          }
+
+                          // Commit da transação
+                          db.commit((err) => {
+                            if (err) {
+                              return db.rollback(() => {
+                                console.error(
+                                  "Erro ao finalizar transação:",
+                                  err
+                                );
+                                res.status(500).send({
+                                  success: false,
+                                  message: "Erro ao finalizar transação",
+                                  error: err.message,
+                                });
+                              });
+                            }
+
+                            console.log("Usuário removido com sucesso:", name);
+                            res.send({
+                              success: true,
+                              message: "Usuário removido com sucesso!",
+                            });
+                          });
+                        });
+                      });
+
+                      return; // Importante: retornar aqui para não continuar com o fluxo normal
+                    }
+
+                    console.log("Notificações atualizadas com sucesso");
+
+                    // 7. Remover registros de viagens do usuário
+                    const deleteViagensSql =
+                      "DELETE FROM viagens WHERE usuario_id = ?";
+                    db.query(deleteViagensSql, [userId], (err) => {
+                      if (err) {
+                        return db.rollback(() => {
+                          console.error(
+                            "Erro ao remover viagens do usuário:",
+                            err
+                          );
+                          res.status(500).send({
+                            success: false,
+                            message: "Erro ao remover viagens do usuário",
+                            error: err.message,
+                          });
+                        });
+                      }
+
+                      console.log("Viagens do usuário removidas com sucesso");
+
+                      // 8. Remover o usuário
+                      const deleteUserSql = "DELETE FROM users WHERE id = ?";
+                      db.query(deleteUserSql, [userId], (err) => {
+                        if (err) {
+                          return db.rollback(() => {
+                            console.error("Erro ao remover usuário:", err);
+                            res.status(500).send({
+                              success: false,
+                              message: "Erro ao remover usuário",
+                              error: err.message,
+                            });
+                          });
+                        }
+
+                        // Commit da transação
+                        db.commit((err) => {
+                          if (err) {
+                            return db.rollback(() => {
+                              console.error(
+                                "Erro ao finalizar transação:",
+                                err
+                              );
+                              res.status(500).send({
+                                success: false,
+                                message: "Erro ao finalizar transação",
+                                error: err.message,
+                              });
+                            });
+                          }
+
+                          console.log("Usuário removido com sucesso:", name);
+                          res.send({
+                            success: true,
+                            message: "Usuário removido com sucesso!",
+                          });
+                        });
+                      });
+                    });
+                  });
+                });
+              });
+            });
           });
         });
       });
@@ -2261,34 +2464,67 @@ app.post("/tarefas/lixo/status", (req, res) => {
 app.post("/tarefas/lixo/notificar", (req, res) => {
   const { usuario_id, motivo } = req.body;
 
-  // Aqui você implementaria a lógica de notificação
-  // Por exemplo, salvando em uma tabela de notificações
-  const sql = `
-    INSERT INTO notificacoes (usuario_id, mensagem, data_criacao)
-    VALUES (?, ?, NOW())
-  `;
+  // Verificar se o usuário existe antes de criar a notificação
+  if (usuario_id) {
+    const checkUserSql = "SELECT id FROM users WHERE id = ?";
+    db.query(checkUserSql, [usuario_id], (err, users) => {
+      if (err) {
+        console.error("Erro ao verificar usuário:", err);
+        return res.status(500).send({
+          success: false,
+          message: "Erro ao verificar usuário",
+          error: err.message,
+        });
+      }
 
-  const mensagem =
-    motivo === "domingo"
-      ? "Você quer que outra pessoa te ajude na segunda?"
-      : "Quer que outra pessoa tire com você amanhã?";
+      if (users.length === 0) {
+        return res.status(404).send({
+          success: false,
+          message: "Usuário não encontrado",
+        });
+      }
 
-  db.query(sql, [usuario_id, mensagem], (err, result) => {
-    if (err) {
-      res.status(500).send({
-        success: false,
-        message: "Erro ao criar notificação",
-        error: err.message,
-      });
-      return;
-    }
-
-    res.send({
-      success: true,
-      message: "Notificação criada com sucesso!",
-      notificacao_id: result.insertId,
+      // Usuário existe, prosseguir com a criação da notificação
+      criarNotificacao();
     });
-  });
+  } else {
+    return res.status(400).send({
+      success: false,
+      message: "ID do usuário é obrigatório",
+    });
+  }
+
+  // Função para criar a notificação
+  function criarNotificacao() {
+    const mensagem =
+      motivo === "domingo"
+        ? "Você quer que outra pessoa te ajude na segunda?"
+        : "Quer que outra pessoa tire com você amanhã?";
+
+    // Usar a estrutura correta da tabela notificacoes
+    const sql = `
+      INSERT INTO notificacoes (mensagem, departamento, remetente_id, remetente_nome)
+      VALUES (?, 'Geral', NULL, 'Sistema')
+    `;
+
+    db.query(sql, [mensagem], (err, result) => {
+      if (err) {
+        console.error("Erro ao criar notificação:", err);
+        res.status(500).send({
+          success: false,
+          message: "Erro ao criar notificação",
+          error: err.message,
+        });
+        return;
+      }
+
+      res.send({
+        success: true,
+        message: "Notificação criada com sucesso!",
+        notificacao_id: result.insertId,
+      });
+    });
+  }
 });
 
 // Remover feriados de uma tarefa específica
@@ -2569,28 +2805,59 @@ app.post("/notificacoes", (req, res) => {
     });
   }
 
-  const sql =
-    "INSERT INTO notificacoes (mensagem, departamento, remetente_id, remetente_nome) VALUES (?, ?, ?, ?)";
-  db.query(
-    sql,
-    [mensagem, departamento, remetente_id, remetente_nome],
-    (err, result) => {
+  // Se remetente_id for fornecido, verificar se o usuário existe
+  if (remetente_id) {
+    const checkUserSql = "SELECT id FROM users WHERE id = ?";
+    db.query(checkUserSql, [remetente_id], (err, users) => {
       if (err) {
-        console.error("Erro ao criar notificação:", err);
+        console.error("Erro ao verificar usuário:", err);
         return res.status(500).send({
           success: false,
-          message: "Erro ao criar notificação",
+          message: "Erro ao verificar usuário",
           error: err.message,
         });
       }
 
-      res.status(201).send({
-        success: true,
-        message: "Mensagem enviada com sucesso!",
-        notificacaoId: result.insertId,
-      });
-    }
-  );
+      if (users.length === 0) {
+        return res.status(404).send({
+          success: false,
+          message: "Usuário remetente não encontrado",
+        });
+      }
+
+      // Usuário existe, prosseguir com a criação da notificação
+      insertNotification();
+    });
+  } else {
+    // Sem remetente_id, prosseguir com a criação da notificação
+    insertNotification();
+  }
+
+  // Função para inserir a notificação
+  function insertNotification() {
+    const sql =
+      "INSERT INTO notificacoes (mensagem, departamento, remetente_id, remetente_nome) VALUES (?, ?, ?, ?)";
+    db.query(
+      sql,
+      [mensagem, departamento, remetente_id, remetente_nome],
+      (err, result) => {
+        if (err) {
+          console.error("Erro ao criar notificação:", err);
+          return res.status(500).send({
+            success: false,
+            message: "Erro ao criar notificação",
+            error: err.message,
+          });
+        }
+
+        res.status(201).send({
+          success: true,
+          message: "Mensagem enviada com sucesso!",
+          notificacaoId: result.insertId,
+        });
+      }
+    );
+  }
 });
 
 // Buscar notificações por departamento
