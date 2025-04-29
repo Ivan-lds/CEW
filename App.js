@@ -15,7 +15,7 @@ import Home from "./components/Home";
 import Tasks from "./components/Tasks";
 import Departaments from "./components/Departaments";
 import LaundryGas from "./components/LaundryGas";
-import Budget from "./components/Budget";
+import Caixa from "./components/Caixa";
 import Configs from "./components/Configs";
 import Login from "./components/Login";
 import Cadastro from "./components/Cadastro";
@@ -123,7 +123,7 @@ export default function App() {
             />
             <Stack.Screen
               name="Budget"
-              component={Budget}
+              component={Caixa}
               options={{ title: "Caixa" }}
             />
             <Stack.Screen
