@@ -66,44 +66,6 @@ const db = mysql.createConnection({
 db.connect((err) => {
   if (err) throw err;
   console.log("Conectado ao MySQL!");
-
-  // Criar tabela notificacoes_lidas se não existir
-  const createNotificacoesLidasTable = `
-    CREATE TABLE IF NOT EXISTS notificacoes_lidas (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      notificacao_id INT NOT NULL,
-      usuario_id INT NOT NULL,
-      lida BOOLEAN DEFAULT FALSE,
-      data_leitura TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY unique_notificacao_usuario (notificacao_id, usuario_id),
-      FOREIGN KEY (notificacao_id) REFERENCES notificacoes(id) ON DELETE CASCADE,
-      FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE
-    )
-  `;
-
-  // Remover a coluna lida da tabela notificacoes se ela existir
-  const alterNotificacoesTable = `
-    ALTER TABLE notificacoes DROP COLUMN IF EXISTS lida
-  `;
-
-  db.query(createNotificacoesLidasTable, (err, result) => {
-    if (err) {
-      console.error("Erro ao criar tabela notificacoes_lidas:", err);
-    } else {
-      console.log("Tabela notificacoes_lidas verificada/criada com sucesso");
-
-      // Após criar a tabela notificacoes_lidas, remover a coluna lida da tabela notificacoes
-      db.query(alterNotificacoesTable, (err, result) => {
-        if (err) {
-          console.error("Erro ao alterar tabela notificacoes:", err);
-        } else {
-          console.log(
-            "Coluna 'lida' removida da tabela notificacoes (se existia)"
-          );
-        }
-      });
-    }
-  });
 });
 
 /* Cadastro */

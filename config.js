@@ -5,13 +5,13 @@
 // Tente diferentes opções de conexão se estiver tendo problemas
 
 // Opção 1: Para dispositivos físicos na mesma rede Wi-Fi, use o IP da máquina que está executando o servidor
-// export const API_URL = "http://192.168.1.55:3001";
+export const API_URL = "http://192.168.1.55:3001";
 
 // Opção 2: Para desenvolvimento local, use localhost
 // export const API_URL = "http://localhost:3001";
 
-// Opção 2: Para emuladores Android, use 10.0.2.2 (que redireciona para o localhost da máquina host)
-export const API_URL = "http://192.168.1.55:3001";
+// Opção 3: Para emuladores Android, use 10.0.2.2 (que redireciona para o localhost da máquina host)
+// export const API_URL = "http://10.0.2.2:3001";
 
 // Opção 3: Para o iOS Simulator, use localhost
 // export const API_URL = 'http://localhost:3001';
@@ -25,12 +25,15 @@ export const API_URL = "http://192.168.1.55:3001";
 
 // Configurações adicionais para requisições axios
 export const API_CONFIG = {
-  timeout: 15000, // 15 segundos
+  timeout: 30000, // 30 segundos (aumentado para dar mais tempo para conexões lentas)
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  // Tenta reconectar automaticamente
-  retry: 2,
-  retryDelay: 1000,
+  // Configurações para lidar com problemas de rede
+  retry: 3,
+  retryDelay: 2000,
+  validateStatus: function (status) {
+    return status >= 200 && status < 500; // Aceita status codes entre 200 e 499
+  },
 };

@@ -74,10 +74,11 @@ const Configs = ({ navigation }: { navigation: any }) => {
 
   const fetchUserData = async () => {
     try {
-      const response = await axios.get("http://192.168.1.55:3001/user-data", {
+      const response = await axios.get(`${API_URL}/user-data`, {
         params: {
           email: userData.email,
         },
+        ...API_CONFIG,
       });
 
       if (response.data.success) {
