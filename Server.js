@@ -3255,10 +3255,20 @@ app.post("/caixa/transacoes", (req, res) => {
 
       // 3. Atualizar o saldo total do caixa
       const updateSaldoCaixa = new Promise((resolve, reject) => {
-        const updateSql =
-          "UPDATE caixa_saldo SET saldo_total = saldo_total + ? WHERE id = 1";
+        let updateSql;
+        let updateParams;
 
-        db.query(updateSql, [valor], (err, result) => {
+        if (tipo === "entrada") {
+          updateSql =
+            "UPDATE caixa_saldo SET saldo_total = saldo_total + ? WHERE id = 1";
+          updateParams = [valor];
+        } else {
+          updateSql =
+            "UPDATE caixa_saldo SET saldo_total = saldo_total - ? WHERE id = 1";
+          updateParams = [valor];
+        }
+
+        db.query(updateSql, updateParams, (err, result) => {
           if (err) reject(err);
           else resolve(result);
         });
@@ -3346,10 +3356,22 @@ app.delete("/caixa/transacoes/:id", (req, res) => {
 
       // 3. Atualizar o saldo total do caixa
       const updateSaldoCaixa = new Promise((resolve, reject) => {
-        const updateSql =
-          "UPDATE caixa_saldo SET saldo_total = saldo_total - ? WHERE id = 1";
+        let updateSql;
+        let updateParams;
 
-        db.query(updateSql, [valor], (err, result) => {
+        if (tipo === "entrada") {
+          // Se estamos excluindo uma entrada, diminuímos o saldo total
+          updateSql =
+            "UPDATE caixa_saldo SET saldo_total = saldo_total - ? WHERE id = 1";
+          updateParams = [valor];
+        } else {
+          // Se estamos excluindo uma saída, aumentamos o saldo total
+          updateSql =
+            "UPDATE caixa_saldo SET saldo_total = saldo_total + ? WHERE id = 1";
+          updateParams = [valor];
+        }
+
+        db.query(updateSql, updateParams, (err, result) => {
           if (err) reject(err);
           else resolve(result);
         });
