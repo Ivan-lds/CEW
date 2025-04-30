@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,12 @@ import { FontAwesome } from "@expo/vector-icons";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL, API_CONFIG } from "../config";
+import { ThemeContext } from "../ThemeContext";
 
 const Calculadora = () => {
+  // Usar o contexto de tema
+  const { isDarkMode, theme } = useContext(ThemeContext);
+
   // Estados para os campos de entrada
   const [internet, setInternet] = useState("");
   const [gas1, setGas1] = useState("");
@@ -158,8 +162,15 @@ const Calculadora = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>🧮 Calculadora de Despesas</Text>
+    <ScrollView
+      style={[
+        styles.container,
+        { backgroundColor: isDarkMode ? "#121212" : "#f8f9fa" },
+      ]}
+    >
+      <Text style={[styles.title, { color: isDarkMode ? "#F5F5F5" : "#333" }]}>
+        🧮 Calculadora de Despesas
+      </Text>
 
       {carregando ? (
         <View style={styles.loadingContainer}>
@@ -174,13 +185,32 @@ const Calculadora = () => {
             </Text>
           </View>
 
-          <View style={styles.formContainer}>
+          <View
+            style={[
+              styles.formContainer,
+              {
+                backgroundColor: isDarkMode ? "#1f1f1f" : "#fff",
+                borderColor: isDarkMode ? "#F5F5F5" : "#ddd",
+              },
+            ]}
+          >
             {/* Campo Internet */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Internet (R$):</Text>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isDarkMode ? "#F5F5F5" : "#555" },
+                ]}
+              >
+                Internet (R$):
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="0,00"
+                placeholderTextColor="#666666"
                 keyboardType="numeric"
                 value={internet}
                 onChangeText={setInternet}
@@ -189,10 +219,21 @@ const Calculadora = () => {
 
             {/* Campo Gás 1 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Gás 1 (R$):</Text>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isDarkMode ? "#F5F5F5" : "#555" },
+                ]}
+              >
+                Gás 1 (R$):
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="0,00"
+                placeholderTextColor="#666666"
                 keyboardType="numeric"
                 value={gas1}
                 onChangeText={setGas1}
@@ -201,10 +242,21 @@ const Calculadora = () => {
 
             {/* Campo Gás 2 */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Gás 2 (R$):</Text>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isDarkMode ? "#F5F5F5" : "#555" },
+                ]}
+              >
+                Gás 2 (R$):
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="0,00"
+                placeholderTextColor="#666666"
                 keyboardType="numeric"
                 value={gas2}
                 onChangeText={setGas2}
@@ -213,10 +265,21 @@ const Calculadora = () => {
 
             {/* Campo Taxa */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Taxa (R$):</Text>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isDarkMode ? "#F5F5F5" : "#555" },
+                ]}
+              >
+                Taxa (R$):
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="0,00"
+                placeholderTextColor="#666666"
                 keyboardType="numeric"
                 value={taxa}
                 onChangeText={setTaxa}
@@ -225,10 +288,21 @@ const Calculadora = () => {
 
             {/* Campo Quantidade de Pessoas */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Quantidade de Pessoas:</Text>
+              <Text
+                style={[
+                  styles.label,
+                  { color: isDarkMode ? "#F5F5F5" : "#555" },
+                ]}
+              >
+                Quantidade de Pessoas:
+              </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="0"
+                placeholderTextColor="#666666"
                 keyboardType="numeric"
                 value={quantidadePessoas}
                 onChangeText={setQuantidadePessoas}
@@ -269,20 +343,56 @@ const Calculadora = () => {
           )}
 
           {/* Explicação do cálculo */}
-          <View style={styles.explicacaoContainer}>
-            <Text style={styles.explicacaoTitle}>Como o cálculo é feito:</Text>
-            <Text style={styles.explicacaoText}>
+          <View
+            style={[
+              styles.explicacaoContainer,
+              {
+                backgroundColor: isDarkMode ? "#1f1f1f" : "#fff",
+                borderColor: isDarkMode ? "#F5F5F5" : "#ddd",
+                borderWidth: isDarkMode ? 1 : 0,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.explicacaoTitle,
+                { color: isDarkMode ? "#F5F5F5" : "#333" },
+              ]}
+            >
+              Como o cálculo é feito:
+            </Text>
+            <Text
+              style={[
+                styles.explicacaoText,
+                { color: isDarkMode ? "#F5F5F5" : "#555" },
+              ]}
+            >
               1. O valor da Internet é dividido pelo total de pessoas
               cadastradas no app ({totalPessoasCadastradas}).
             </Text>
-            <Text style={styles.explicacaoText}>
+            <Text
+              style={[
+                styles.explicacaoText,
+                { color: isDarkMode ? "#F5F5F5" : "#555" },
+              ]}
+            >
               2. Os valores de Gás 1 e Gás 2 são somados e divididos pela
               quantidade de pessoas informada.
             </Text>
-            <Text style={styles.explicacaoText}>
+            <Text
+              style={[
+                styles.explicacaoText,
+                { color: isDarkMode ? "#F5F5F5" : "#555" },
+              ]}
+            >
               3. O valor da Taxa é adicionado integralmente.
             </Text>
-            <Text style={styles.explicacaoText}>
+            <Text
+              style={[
+                styles.explicacaoText,
+                { color: isDarkMode ? "#F5F5F5" : "#555" },
+              ]}
+            >
               4. O resultado final é a soma desses valores.
             </Text>
           </View>
@@ -295,13 +405,11 @@ const Calculadora = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
     padding: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
     textAlign: "center",
     marginBottom: 20,
   },
@@ -329,7 +437,6 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   formContainer: {
-    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
     marginBottom: 20,
@@ -345,7 +452,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#555",
     marginBottom: 5,
   },
   input: {
@@ -409,7 +515,6 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   explicacaoContainer: {
-    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 10,
     marginBottom: 20,
@@ -422,12 +527,10 @@ const styles = StyleSheet.create({
   explicacaoTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 10,
   },
   explicacaoText: {
     fontSize: 14,
-    color: "#555",
     marginBottom: 8,
   },
 });

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
+import { ThemeContext } from "../ThemeContext";
 
 interface Tarefa {
   id: number;
@@ -43,8 +44,10 @@ interface Tarefa {
 }
 
 const Admin = ({ navigation }: { navigation: any }) => {
+  // Usar o contexto de tema global
+  const { isDarkMode, toggleTheme, theme } = useContext(ThemeContext);
+
   const [taskFrequency, setTaskFrequency] = useState(0);
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -151,12 +154,12 @@ const Admin = ({ navigation }: { navigation: any }) => {
     Alert.alert("Sucesso", `Tarefas agora ocorrerão a cada ${frequency} dias.`);
   };
 
-  // Funções de tema
-  const toggleTheme = () => {
-    setIsDarkTheme((prev) => !prev);
+  // Função para alternar o tema usando o contexto global
+  const handleToggleTheme = () => {
+    toggleTheme();
     Alert.alert(
       "Tema Alterado",
-      isDarkTheme ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
+      isDarkMode ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
     );
   };
 
@@ -1085,14 +1088,31 @@ const Admin = ({ navigation }: { navigation: any }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Administração</Text>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={true}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Administração</Text>
+      <ScrollView
+        style={[styles.content, { backgroundColor: theme.background }]}
+        showsVerticalScrollIndicator={true}
+      >
         {/* Seção: Dados Pessoais */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Dados Pessoais</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            📋 Dados Pessoais
+          </Text>
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
             onPress={() => setIsProfileModalVisible(true)}
           >
             <Text style={styles.buttonText}>Editar Perfil</Text>
@@ -1106,20 +1126,46 @@ const Admin = ({ navigation }: { navigation: any }) => {
           transparent={true}
           onRequestClose={() => setIsProfileModalVisible(false)}
         >
-          <View style={styles.profileModalContainer}>
-            <View style={styles.profileModalContent}>
-              <Text style={styles.modalTitle}>Dados Pessoais</Text>
+          <View
+            style={[
+              styles.profileModalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.profileModalContent,
+                {
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Dados Pessoais
+              </Text>
 
               {/* Informações do Usuário */}
               <View style={styles.infoContainer}>
-                <Text style={styles.label}>Nome:</Text>
-                <Text style={styles.value}>{userData.name}</Text>
+                <Text style={[styles.label, { color: theme.text }]}>Nome:</Text>
+                <Text style={[styles.value, { color: theme.text }]}>
+                  {userData.name}
+                </Text>
 
-                <Text style={styles.label}>Email:</Text>
-                <Text style={styles.value}>{userData.email}</Text>
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Email:
+                </Text>
+                <Text style={[styles.value, { color: theme.text }]}>
+                  {userData.email}
+                </Text>
 
-                <Text style={styles.label}>Departamento:</Text>
-                <Text style={styles.value}>{userData.departamento}</Text>
+                <Text style={[styles.label, { color: theme.text }]}>
+                  Departamento:
+                </Text>
+                <Text style={[styles.value, { color: theme.text }]}>
+                  {userData.departamento}
+                </Text>
               </View>
 
               {/* Botões de Ação */}
@@ -1135,7 +1181,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.closeButton]}
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de fechar
+                  ]}
                   onPress={() => setIsProfileModalVisible(false)}
                 >
                   <Text style={styles.buttonText}>Fechar</Text>
@@ -1146,26 +1195,51 @@ const Admin = ({ navigation }: { navigation: any }) => {
         </Modal>
 
         {/* Seção: Temas */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎨 Tema</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            🎨 Tema
+          </Text>
           <View style={styles.themeSwitcher}>
-            <Text style={styles.themeText}>
-              {isDarkTheme ? "Modo Escuro" : "Modo Claro"}
+            <Text style={[styles.themeText, { color: theme.text }]}>
+              {isDarkMode ? "Modo Escuro" : "Modo Claro"}
             </Text>
             <Switch
-              value={isDarkTheme}
-              onValueChange={toggleTheme}
-              thumbColor={isDarkTheme ? "#f4f3f4" : "#f8f9fa"}
+              value={isDarkMode}
+              onValueChange={handleToggleTheme}
+              thumbColor={isDarkMode ? "#f4f3f4" : "#f8f9fa"}
               trackColor={{ false: "#767577", true: "#81b0ff" }}
             />
           </View>
         </View>
 
         {/* Seção: Documentos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📁 Documentos</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            📁 Documentos
+          </Text>
           <TouchableOpacity
-            style={[styles.button, styles.documentButton]}
+            style={[
+              styles.button,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
             onPress={() => setIsDocumentosModalVisible(true)}
           >
             <Text style={styles.buttonText}>Gerenciar Documentos</Text>
@@ -1179,9 +1253,26 @@ const Admin = ({ navigation }: { navigation: any }) => {
           transparent={true}
           onRequestClose={() => setIsDocumentosModalVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
-              <Text style={styles.modalTitle}>Gerenciamento de Documentos</Text>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  maxHeight: "90%",
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Gerenciamento de Documentos
+              </Text>
 
               {Platform.OS === "web" ? (
                 <View style={styles.webMessageContainer}>
@@ -1289,7 +1380,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
               )}
 
               <TouchableOpacity
-                style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: "#dc3545", // Cor vermelha fixa para o botão de fechar
+                    marginTop: 15,
+                  },
+                ]}
                 onPress={() => setIsDocumentosModalVisible(false)}
               >
                 <Text style={styles.buttonText}>Fechar</Text>
@@ -1299,10 +1396,24 @@ const Admin = ({ navigation }: { navigation: any }) => {
         </Modal>
 
         {/* Seção: Gerenciar Tarefas */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Gerenciar Tarefas</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            📋 Gerenciar Tarefas
+          </Text>
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
             onPress={() => setIsGerenciarTarefasVisible(true)}
           >
             <Text style={styles.buttonText}>Gerenciar Tarefas</Text>
@@ -1310,10 +1421,24 @@ const Admin = ({ navigation }: { navigation: any }) => {
         </View>
 
         {/* Seção: Gerenciar Pessoas */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👥 Gerenciar Pessoas</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            👥 Gerenciar Pessoas
+          </Text>
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
             onPress={() => setIsGerenciarPessoasVisible(true)}
           >
             <Text style={styles.buttonText}>Gerenciar Pessoas</Text>
@@ -1321,16 +1446,29 @@ const Admin = ({ navigation }: { navigation: any }) => {
         </View>
 
         {/* Lista de usuários */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Usuários Cadastrados</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Usuários Cadastrados
+          </Text>
           <View>
             {users.map((item) => (
               <TouchableOpacity
                 key={item.id.toString()}
                 onPress={() => handleUserOptions(item)}
-                style={styles.userItem}
+                style={[styles.userItem, { borderColor: theme.border }]}
               >
-                <Text style={styles.userText}>{item.name}</Text>
+                <Text style={[styles.userText, { color: theme.text }]}>
+                  {item.name}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1339,16 +1477,35 @@ const Admin = ({ navigation }: { navigation: any }) => {
         {/* Modal para opções do usuário */}
         {selectedUser && (
           <Modal visible={isModalVisible} animationType="slide">
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
+            <View
+              style={[
+                styles.modalContainer,
+                { backgroundColor: "rgba(0,0,0,0.5)" },
+              ]}
+            >
+              <View
+                style={[
+                  styles.modalContent,
+                  {
+                    backgroundColor: theme.panel,
+                    borderColor: theme.border,
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
                   Opções para {selectedUser.name}
                 </Text>
 
                 <View style={[styles.inputRow, styles.inputAniversario]}>
                   <TextInput
-                    style={[styles.input, styles.flexInput]}
+                    style={[
+                      styles.input,
+                      styles.flexInput,
+                      { backgroundColor: "#FFFFFF", color: "#000000" },
+                    ]}
                     placeholder="Data de Aniversário (DD-MM-YYYY)"
+                    placeholderTextColor="#666666"
                     value={birthdayInput}
                     onChangeText={handleDateChange}
                     keyboardType="numeric"
@@ -1364,8 +1521,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
                 <View style={styles.inputRow}>
                   <TextInput
-                    style={[styles.input, styles.flexInput]}
+                    style={[
+                      styles.input,
+                      styles.flexInput,
+                      { backgroundColor: "#FFFFFF", color: "#000000" },
+                    ]}
                     placeholder="Departamento"
+                    placeholderTextColor="#666666"
                     value={departmentInput}
                     onChangeText={setDepartmentInput}
                   />
@@ -1384,19 +1546,55 @@ const Admin = ({ navigation }: { navigation: any }) => {
                       onValueChange={(itemValue) =>
                         setLaundryDayInput(itemValue)
                       }
-                      style={styles.picker}
+                      style={[
+                        styles.picker,
+                        {
+                          backgroundColor: "#FFFFFF",
+                          color: "#000000",
+                        },
+                      ]}
+                      dropdownIconColor="#000000"
                     >
-                      <Picker.Item label="Dia lavar roupa" value="" />
+                      <Picker.Item
+                        label="Dia lavar roupa"
+                        value=""
+                        color="#000000"
+                      />
                       <Picker.Item
                         label="Segunda-feira"
                         value="Segunda-feira"
+                        color="#000000"
                       />
-                      <Picker.Item label="Terça-feira" value="Terça-feira" />
-                      <Picker.Item label="Quarta-feira" value="Quarta-feira" />
-                      <Picker.Item label="Quinta-feira" value="Quinta-feira" />
-                      <Picker.Item label="Sexta-feira" value="Sexta-feira" />
-                      <Picker.Item label="Sábado" value="Sábado" />
-                      <Picker.Item label="Domingo" value="Domingo" />
+                      <Picker.Item
+                        label="Terça-feira"
+                        value="Terça-feira"
+                        color="#000000"
+                      />
+                      <Picker.Item
+                        label="Quarta-feira"
+                        value="Quarta-feira"
+                        color="#000000"
+                      />
+                      <Picker.Item
+                        label="Quinta-feira"
+                        value="Quinta-feira"
+                        color="#000000"
+                      />
+                      <Picker.Item
+                        label="Sexta-feira"
+                        value="Sexta-feira"
+                        color="#000000"
+                      />
+                      <Picker.Item
+                        label="Sábado"
+                        value="Sábado"
+                        color="#000000"
+                      />
+                      <Picker.Item
+                        label="Domingo"
+                        value="Domingo"
+                        color="#000000"
+                      />
                     </Picker>
                   </View>
                   <TouchableOpacity
@@ -1434,7 +1632,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.button, styles.closeButton]}
+                  style={[
+                    styles.button,
+                    { backgroundColor: "#007bff" }, // Cor azul para o botão de fechar
+                  ]}
                   onPress={() => {
                     setIsModalVisible(false);
                     setBirthdayInput("");
@@ -1449,15 +1650,29 @@ const Admin = ({ navigation }: { navigation: any }) => {
         )}
 
         {/* Seção: Lista de Pessoas */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>👥 Lista de Pessoas</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            👥 Lista de Pessoas
+          </Text>
 
           <View style={styles.listHeader}>
-            <Text style={styles.listTitle}>Pessoas Cadastradas</Text>
+            <Text style={[styles.listTitle, { color: theme.text }]}>
+              Pessoas Cadastradas
+            </Text>
             <TouchableOpacity
               style={[
                 styles.smallButton,
                 isOrdenacaoAtiva && styles.activeButton,
+                { backgroundColor: theme.accent || "#007bff" },
               ]}
               onPress={() => setIsOrdenacaoAtiva(!isOrdenacaoAtiva)}
             >
@@ -1470,11 +1685,28 @@ const Admin = ({ navigation }: { navigation: any }) => {
           <View>
             {(isOrdenacaoAtiva ? pessoasOrdenadas : pessoas).map(
               (item, index) => (
-                <View key={item.id.toString()} style={styles.pessoaItem}>
+                <View
+                  key={item.id.toString()}
+                  style={[
+                    styles.pessoaItem,
+                    {
+                      borderColor: theme.border,
+                      borderWidth: 1,
+                      backgroundColor: theme.panel,
+                    },
+                  ]}
+                >
                   <View style={styles.pessoaInfo}>
-                    <Text style={styles.pessoaNome}>{item.name}</Text>
+                    <Text style={[styles.pessoaNome, { color: "#F5F5F5" }]}>
+                      {item.name}
+                    </Text>
                     {item.departamento && (
-                      <Text style={styles.pessoaDepartamento}>
+                      <Text
+                        style={[
+                          styles.pessoaDepartamento,
+                          { color: "#F5F5F5" },
+                        ]}
+                      >
                         {item.departamento}
                       </Text>
                     )}
@@ -1492,7 +1724,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
                         <FontAwesome
                           name="arrow-up"
                           size={20}
-                          color={index === 0 ? "#ccc" : "#007bff"}
+                          color={
+                            index === 0
+                              ? theme.textSecondary
+                              : theme.accent || "#007bff"
+                          }
                         />
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -1509,8 +1745,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
                           size={20}
                           color={
                             index === pessoasOrdenadas.length - 1
-                              ? "#ccc"
-                              : "#007bff"
+                              ? theme.textSecondary
+                              : theme.accent || "#007bff"
                           }
                         />
                       </TouchableOpacity>
@@ -1529,9 +1765,26 @@ const Admin = ({ navigation }: { navigation: any }) => {
           transparent={true}
           onRequestClose={() => setIsGerenciarTarefasVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
-              <Text style={styles.modalTitle}>Gerenciamento de Tarefas</Text>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  maxHeight: "90%",
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Gerenciamento de Tarefas
+              </Text>
 
               <TouchableOpacity
                 style={[styles.button, { marginBottom: 15 }]}
@@ -1604,7 +1857,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
               </ScrollView>
 
               <TouchableOpacity
-                style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: "#dc3545", // Cor vermelha para o botão de fechar
+                    marginTop: 15,
+                  },
+                ]}
                 onPress={() => setIsGerenciarTarefasVisible(false)}
               >
                 <Text style={styles.buttonText}>Fechar</Text>
@@ -1620,20 +1879,44 @@ const Admin = ({ navigation }: { navigation: any }) => {
           animationType="slide"
           onRequestClose={() => setNovaTarefaVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Nova Tarefa</Text>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Nova Tarefa
+              </Text>
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="Nome da tarefa"
+                placeholderTextColor="#666666"
                 value={novaTarefaNome}
                 onChangeText={setNovaTarefaNome}
               />
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="Intervalo em dias"
+                placeholderTextColor="#666666"
                 value={novaTarefaIntervalo}
                 onChangeText={setNovaTarefaIntervalo}
                 keyboardType="numeric"
@@ -1648,7 +1931,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
+                  ]}
                   onPress={() => setNovaTarefaVisible(false)}
                 >
                   <Text style={styles.buttonText}>Cancelar</Text>
@@ -1665,18 +1951,36 @@ const Admin = ({ navigation }: { navigation: any }) => {
           animationType="slide"
           onRequestClose={() => setEditarIntervaloVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Editar Intervalo - {tarefaSelecionada?.nome}
               </Text>
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 value={intervaloTemp}
                 onChangeText={setIntervaloTemp}
                 keyboardType="numeric"
                 placeholder="Novo intervalo em dias"
+                placeholderTextColor="#666666"
               />
 
               <View style={styles.modalButtons}>
@@ -1688,7 +1992,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
+                  ]}
                   onPress={() => setEditarIntervaloVisible(false)}
                 >
                   <Text style={styles.buttonText}>Cancelar</Text>
@@ -1705,17 +2012,51 @@ const Admin = ({ navigation }: { navigation: any }) => {
           transparent={true}
           onRequestClose={() => setIsGerenciarPessoasVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={[styles.modalContent, { maxHeight: "90%" }]}>
-              <Text style={styles.modalTitle}>Gerenciamento de Pessoas</Text>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  maxHeight: "90%",
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Gerenciamento de Pessoas
+              </Text>
 
               <ScrollView>
                 {pessoas.map((pessoa) => (
-                  <View key={pessoa.id} style={styles.pessoaItem}>
+                  <View
+                    key={pessoa.id}
+                    style={[
+                      styles.pessoaItem,
+                      {
+                        borderColor: theme.border,
+                        borderWidth: 1,
+                        backgroundColor: theme.panel,
+                      },
+                    ]}
+                  >
                     <View style={styles.pessoaInfo}>
-                      <Text style={styles.pessoaNome}>{pessoa.name}</Text>
+                      <Text style={[styles.pessoaNome, { color: "#F5F5F5" }]}>
+                        {pessoa.name}
+                      </Text>
                       {pessoa.departamento && (
-                        <Text style={styles.pessoaDepartamento}>
+                        <Text
+                          style={[
+                            styles.pessoaDepartamento,
+                            { color: "#F5F5F5" },
+                          ]}
+                        >
                           {pessoa.departamento}
                         </Text>
                       )}
@@ -1748,7 +2089,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
               </ScrollView>
 
               <TouchableOpacity
-                style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+                style={[
+                  styles.button,
+                  {
+                    backgroundColor: "#007bff", // Cor azul para o botão de fechar
+                    marginTop: 15,
+                  },
+                ]}
                 onPress={() => setIsGerenciarPessoasVisible(false)}
               >
                 <Text style={styles.buttonText}>Fechar</Text>
@@ -1764,15 +2111,33 @@ const Admin = ({ navigation }: { navigation: any }) => {
           animationType="slide"
           onRequestClose={() => setIsRetornoModalVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Registrar Retorno - {pessoaSelecionada?.name}
               </Text>
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  { backgroundColor: "#FFFFFF", color: "#000000" },
+                ]}
                 placeholder="Data de Retorno (DD-MM-YYYY)"
+                placeholderTextColor="#666666"
                 value={dataRetorno}
                 onChangeText={(text) => {
                   console.log("Input original:", text);
@@ -1798,7 +2163,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
+                  ]}
                   onPress={() => {
                     setIsRetornoModalVisible(false);
                     setDataRetorno("");
@@ -1818,13 +2186,29 @@ const Admin = ({ navigation }: { navigation: any }) => {
           animationType="slide"
           onRequestClose={() => setIsReatribuirModalVisible(false)}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: "rgba(0,0,0,0.5)" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalContent,
+                {
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Reatribuir Tarefa: {tarefaParaReatribuir?.nome}
               </Text>
 
-              <Text style={styles.label}>Selecione o novo responsável:</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Selecione o novo responsável:
+              </Text>
               <ScrollView style={styles.usuariosList}>
                 {usuariosDisponiveis.map((usuario) => (
                   <TouchableOpacity
@@ -1839,6 +2223,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                     <Text
                       style={[
                         styles.usuarioText,
+                        { color: theme.text },
                         novoResponsavelId === usuario.id &&
                           styles.usuarioTextSelected,
                       ]}
@@ -1858,7 +2243,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
+                  style={[
+                    styles.modalButton,
+                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
+                  ]}
                   onPress={() => {
                     setIsReatribuirModalVisible(false);
                     setTarefaParaReatribuir(null);
@@ -1947,7 +2335,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
+    marginBottom: 2,
+    marginTop: -10,
     textAlign: "center",
   },
   section: {

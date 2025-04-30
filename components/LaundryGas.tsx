@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { API_URL } from "../config";
+import { ThemeContext } from "../ThemeContext";
 
 interface TrocaGas {
   id: number;
@@ -18,6 +19,9 @@ interface TrocaGas {
 }
 
 const LaundryGas = () => {
+  // Usar o contexto de tema global
+  const { theme } = useContext(ThemeContext);
+
   const [ultimaTroca, setUltimaTroca] = useState("");
   const [novaData, setNovaData] = useState("");
   const [todasTrocas, setTodasTrocas] = useState<TrocaGas[]>([]);
@@ -177,31 +181,59 @@ const LaundryGas = () => {
   return (
     <ScrollView style={styles.container}>
       {/* Formulário para nova troca */}
-      <View style={styles.formContainer}>
+      <View
+        style={[
+          styles.formContainer,
+          { backgroundColor: theme.panel, borderColor: theme.border },
+        ]}
+      >
         {/* Exibição de todas as trocas */}
-        <View style={styles.infoContainer}>
-          <Text style={styles.sectionTitle}>Histórico de Trocas</Text>
+        <View
+          style={[
+            styles.infoContainer,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Histórico de Trocas
+          </Text>
 
           {carregando ? (
             <ActivityIndicator
               size="large"
-              color="#007bff"
+              color={theme.accent || "#007bff"}
               style={styles.loader}
             />
           ) : todasTrocas.length > 0 ? (
             todasTrocas.map((troca) => (
-              <View key={troca.id} style={styles.trocaItem}>
-                <Text style={styles.trocaData}>{troca.data}</Text>
+              <View
+                key={troca.id}
+                style={[styles.trocaItem, { borderBottomColor: theme.border }]}
+              >
+                <Text style={[styles.trocaData, { color: theme.text }]}>
+                  {troca.data}
+                </Text>
               </View>
             ))
           ) : (
-            <Text style={styles.emptyText}>Nenhum registro encontrado</Text>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Nenhum registro encontrado
+            </Text>
           )}
         </View>
 
-        <Text style={styles.label}>Registrar nova troca:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>
+          Registrar nova troca:
+        </Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              borderColor: theme.border,
+              backgroundColor: "#FFFFFF",
+              color: "#000000",
+            },
+          ]}
           value={novaData}
           onChangeText={(text) => {
             // Remove caracteres não numéricos e traços
@@ -229,19 +261,28 @@ const LaundryGas = () => {
             setNovaData(formattedText);
           }}
           placeholder="Data de troca..."
-          placeholderTextColor="#999"
+          placeholderTextColor="#666666"
           maxLength={10}
           keyboardType="numeric"
         />
         {/* Container para os botões lado a lado */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={registrarTroca}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
+            onPress={registrarTroca}
+          >
             <Text style={styles.buttonText}>Registrar</Text>
           </TouchableOpacity>
 
           {/* Botão de deletar */}
           <TouchableOpacity
-            style={styles.deleteButton}
+            style={[
+              styles.deleteButton,
+              { backgroundColor: theme.danger || "#dc3545" },
+            ]}
             onPress={deletarRegistro}
           >
             <Text style={styles.deleteButtonText}>Deletar</Text>

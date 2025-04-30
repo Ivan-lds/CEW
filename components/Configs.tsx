@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -25,9 +25,12 @@ import * as FileSystem from "expo-file-system";
 import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
 import Calculadora from "./Calculadora";
+import { ThemeContext } from "../ThemeContext";
 
 const Configs = ({ navigation }: { navigation: any }) => {
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
+  // Usar o contexto de tema global
+  const { isDarkMode, toggleTheme, theme } = useContext(ThemeContext);
+
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [userData, setUserData] = useState({
     name: "",
@@ -89,11 +92,12 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  const toggleTheme = () => {
-    setIsDarkTheme((previousState) => !previousState);
+  // Função para alternar o tema usando o contexto global
+  const handleToggleTheme = () => {
+    toggleTheme();
     Alert.alert(
       "Tema Alterado",
-      isDarkTheme ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
+      isDarkMode ? "Tema Claro Ativado!" : "Tema Escuro Ativado!"
     );
   };
 
@@ -450,14 +454,28 @@ const Configs = ({ navigation }: { navigation: any }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Configurações</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Configurações</Text>
 
       {/* Seção: Dados Pessoais */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📋 Dados Pessoais</Text>
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: theme.panel,
+            borderColor: theme.border,
+            borderWidth: 1,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          📋 Dados Pessoais
+        </Text>
         <TouchableOpacity
-          style={styles.button}
+          style={[
+            styles.button,
+            { backgroundColor: theme.accent || "#007bff" },
+          ]}
           onPress={() => setIsModalVisible(true)}
         >
           <Text style={styles.buttonText}>Editar Perfil</Text>
@@ -471,26 +489,53 @@ const Configs = ({ navigation }: { navigation: any }) => {
         transparent={true}
         onRequestClose={() => setIsModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Dados Pessoais</Text>
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: "rgba(0,0,0,0.5)" },
+          ]}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: theme.panel,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Dados Pessoais
+            </Text>
 
             {/* Informações do Usuário */}
             <View style={styles.infoContainer}>
-              <Text style={styles.label}>Nome:</Text>
-              <Text style={styles.value}>{userData.name}</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Nome:</Text>
+              <Text style={[styles.value, { color: theme.text }]}>
+                {userData.name}
+              </Text>
 
-              <Text style={styles.label}>Email:</Text>
-              <Text style={styles.value}>{userData.email}</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Email:</Text>
+              <Text style={[styles.value, { color: theme.text }]}>
+                {userData.email}
+              </Text>
 
-              <Text style={styles.label}>Departamento:</Text>
-              <Text style={styles.value}>{userData.departamento}</Text>
+              <Text style={[styles.label, { color: theme.text }]}>
+                Departamento:
+              </Text>
+              <Text style={[styles.value, { color: theme.text }]}>
+                {userData.departamento}
+              </Text>
             </View>
 
             {/* Botões de Ação */}
             <View style={styles.buttonContainer}>
               <TouchableOpacity
-                style={[styles.actionButton, styles.changePasswordButton]}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: theme.accent || "#007bff" },
+                ]}
                 onPress={() => {
                   setIsModalVisible(false);
                   navigation.navigate("RedefinirSenha");
@@ -500,7 +545,10 @@ const Configs = ({ navigation }: { navigation: any }) => {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.actionButton, styles.closeButton]}
+                style={[
+                  styles.actionButton,
+                  { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de fechar
+                ]}
                 onPress={() => setIsModalVisible(false)}
               >
                 <Text style={styles.buttonText}>Fechar</Text>
@@ -511,26 +559,51 @@ const Configs = ({ navigation }: { navigation: any }) => {
       </Modal>
 
       {/* Seção: Temas */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🎨 Tema</Text>
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: theme.panel,
+            borderColor: theme.border,
+            borderWidth: 1,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          🎨 Tema
+        </Text>
         <View style={styles.themeSwitcher}>
-          <Text style={styles.themeText}>
-            {isDarkTheme ? "Modo Escuro" : "Modo Claro"}
+          <Text style={[styles.themeText, { color: theme.text }]}>
+            {isDarkMode ? "Modo Escuro" : "Modo Claro"}
           </Text>
           <Switch
-            value={isDarkTheme}
-            onValueChange={toggleTheme}
-            thumbColor={isDarkTheme ? "#f4f3f4" : "#f8f9fa"}
+            value={isDarkMode}
+            onValueChange={handleToggleTheme}
+            thumbColor={isDarkMode ? "#f4f3f4" : "#f8f9fa"}
             trackColor={{ false: "#767577", true: "#81b0ff" }}
           />
         </View>
       </View>
 
       {/* Seção: Documentos */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📁 Documentos</Text>
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: theme.panel,
+            borderColor: theme.border,
+            borderWidth: 1,
+          },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          📁 Documentos
+        </Text>
         <TouchableOpacity
-          style={styles.button}
+          style={[
+            styles.button,
+            { backgroundColor: theme.accent || "#007bff" },
+          ]}
           onPress={() => setIsDocumentosModalVisible(true)}
         >
           <Text style={styles.buttonText}>Gerenciar Documentos</Text>
@@ -539,10 +612,24 @@ const Configs = ({ navigation }: { navigation: any }) => {
 
       {/* Seção: Calculadora - Visível apenas para usuários do departamento Caixa */}
       {isCalculadoraVisible && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🧮 Calculadora de Despesas</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: theme.panel,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            🧮 Calculadora de Despesas
+          </Text>
           <TouchableOpacity
-            style={styles.button}
+            style={[
+              styles.button,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
             onPress={() => setIsCalculadoraModalVisible(true)}
           >
             <Text style={styles.buttonText}>Abrir Calculadora</Text>
@@ -557,9 +644,26 @@ const Configs = ({ navigation }: { navigation: any }) => {
         transparent={true}
         onRequestClose={() => setIsDocumentosModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { maxHeight: "90%" }]}>
-            <Text style={styles.modalTitle}>Gerenciamento de Documentos</Text>
+        <View
+          style={[
+            styles.modalContainer,
+            { backgroundColor: "rgba(0,0,0,0.5)" },
+          ]}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {
+                maxHeight: "90%",
+                backgroundColor: theme.panel,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Gerenciamento de Documentos
+            </Text>
 
             {Platform.OS === "web" ? (
               <View style={styles.webMessageContainer}>
@@ -669,7 +773,13 @@ const Configs = ({ navigation }: { navigation: any }) => {
             )}
 
             <TouchableOpacity
-              style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+              style={[
+                styles.button,
+                {
+                  backgroundColor: "#dc3545", // Cor vermelha fixa para o botão de fechar
+                  marginTop: 15,
+                },
+              ]}
               onPress={() => setIsDocumentosModalVisible(false)}
             >
               <Text style={styles.buttonText}>Fechar</Text>
@@ -685,14 +795,23 @@ const Configs = ({ navigation }: { navigation: any }) => {
         transparent={false}
         onRequestClose={() => setIsCalculadoraModalVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: "#f8f9fa", padding: 16 }}>
-          <Text style={styles.modalTitle}>Calculadora de Despesas</Text>
-
+        <View
+          style={{ flex: 1, backgroundColor: theme.background, padding: 16 }}
+        >
+      
           {/* Renderizar o componente Calculadora diretamente */}
           <Calculadora />
 
           <TouchableOpacity
-            style={[styles.button, styles.closeButton, { marginTop: 15 }]}
+            style={[
+              styles.button,
+              {
+                backgroundColor: "#dc3545", // Cor vermelha fixa para o botão de fechar
+                marginTop: 15,
+                margin: 'auto',
+                width: 270,
+              },
+            ]}
             onPress={() => setIsCalculadoraModalVisible(false)}
           >
             <Text style={styles.buttonText}>Fechar</Text>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -12,8 +12,12 @@ import { TouchableOpacity } from "react-native-gesture-handler";
 import axios from "axios";
 import { API_URL, API_CONFIG } from "../config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ThemeContext } from "../ThemeContext";
 
 const Departaments = () => {
+  // Usar o contexto de tema global
+  const { theme } = useContext(ThemeContext);
+
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [message, setMessage] = useState("");
   const [userId, setUserId] = useState<number | null>(null);
@@ -98,109 +102,282 @@ const Departaments = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Gerenciar Departamentos</Text>
-      <Text style={styles.subtitle}>Selecione o departamento:</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Text style={[styles.title, { color: theme.text }]}>
+        Gerenciar Departamentos
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.text }]}>
+        Selecione o departamento:
+      </Text>
 
       {/* Lista de Departamentos */}
       <View style={styles.departmentsContainer}>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Todos" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Todos" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Todos")}
         >
-          <Text style={styles.departmentText}>📢 Todos os Departamentos</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              { color: selectedDepartment === "Todos" ? "#fff" : theme.text },
+            ]}
+          >
+            📢 Todos os Departamentos
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Presidente" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Presidente" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Presidente")}
         >
-          <Text style={styles.departmentText}>👨‍💼 Presidente</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              {
+                color:
+                  selectedDepartment === "Presidente" ? "#fff" : theme.text,
+              },
+            ]}
+          >
+            👨‍💼 Presidente
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Vice-Presidente" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Vice-Presidente" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Vice-Presidente")}
         >
-          <Text style={styles.departmentText}>👨‍💼 Vice-Presidente</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              {
+                color:
+                  selectedDepartment === "Vice-Presidente"
+                    ? "#fff"
+                    : theme.text,
+              },
+            ]}
+          >
+            👨‍💼 Vice-Presidente
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Secretário" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Secretário" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Secretário")}
         >
-          <Text style={styles.departmentText}>✍️ Secretário</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              {
+                color:
+                  selectedDepartment === "Secretário" ? "#fff" : theme.text,
+              },
+            ]}
+          >
+            ✍️ Secretário
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Vice-Secretário" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Vice-Secretário" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Vice-Secretário")}
         >
-          <Text style={styles.departmentText}>✍️ Vice-Secretário</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              {
+                color:
+                  selectedDepartment === "Vice-Secretário"
+                    ? "#fff"
+                    : theme.text,
+              },
+            ]}
+          >
+            ✍️ Vice-Secretário
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Manutenção" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Manutenção" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Manutenção")}
         >
-          <Text style={styles.departmentText}>🔧 Manutenção</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              {
+                color:
+                  selectedDepartment === "Manutenção" ? "#fff" : theme.text,
+              },
+            ]}
+          >
+            🔧 Manutenção
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Compras" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Compras" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Compras")}
         >
-          <Text style={styles.departmentText}>🛒 Compras</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              { color: selectedDepartment === "Compras" ? "#fff" : theme.text },
+            ]}
+          >
+            🛒 Compras
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Fiscalização" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Fiscalização" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Fiscalização")}
         >
-          <Text style={styles.departmentText}>👀 Fiscalização</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              {
+                color:
+                  selectedDepartment === "Fiscalização" ? "#fff" : theme.text,
+              },
+            ]}
+          >
+            👀 Fiscalização
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.departmentButton,
-            selectedDepartment === "Caixa" && styles.selectedButton,
+            { backgroundColor: theme.panel, borderColor: theme.border },
+            selectedDepartment === "Caixa" && [
+              styles.selectedButton,
+              {
+                backgroundColor: theme.accent || "#007bff",
+                borderColor: theme.border,
+              },
+            ],
           ]}
           onPress={() => setSelectedDepartment("Caixa")}
         >
-          <Text style={styles.departmentText}>💰 Caixa</Text>
+          <Text
+            style={[
+              styles.departmentText,
+              { color: selectedDepartment === "Caixa" ? "#fff" : theme.text },
+            ]}
+          >
+            💰 Caixa
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Campo de Texto para a Mensagem */}
-      <Text style={styles.subtitle}>Escreva sua solicitação:</Text>
+      <Text style={[styles.subtitle, { color: theme.text }]}>
+        Escreva sua solicitação:
+      </Text>
       <TextInput
-        style={styles.textInput}
+        style={[
+          styles.textInput,
+          {
+            backgroundColor: "#FFFFFF",
+            color: "#000000",
+            borderColor: theme.border,
+            opacity: !!selectedDepartment ? 1 : 0.5,
+          },
+        ]}
         placeholder="Digite as necessidades do setor"
+        placeholderTextColor="#666666"
         value={message}
         onChangeText={setMessage}
         editable={!!selectedDepartment}
       />
 
       {loading ? (
-        <ActivityIndicator size="large" color="#007bff" style={styles.loader} />
+        <ActivityIndicator
+          size="large"
+          color={theme.accent || "#007bff"}
+          style={styles.loader}
+        />
       ) : (
-        <Button title="Enviar Notificação" onPress={sendNotification} />
+        <View style={{ marginTop: 10 }}>
+          <Button
+            title="Enviar Notificação"
+            onPress={sendNotification}
+            color={theme.accent || "#007bff"}
+          />
+        </View>
       )}
     </View>
   );

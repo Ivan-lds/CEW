@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_URL, API_CONFIG } from "../config";
 import { Picker } from "@react-native-picker/picker";
+import { ThemeContext } from "../ThemeContext";
 
 interface Transacao {
   id: number;
@@ -39,6 +40,9 @@ interface SaldoCaixa {
 }
 
 const Caixa = ({ navigation }: { navigation: any }) => {
+  // Usar o contexto de tema global
+  const { theme } = useContext(ThemeContext);
+
   // Estados para os dados
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [totaisMensais, setTotaisMensais] = useState<TotalMensal[]>([]);
@@ -252,21 +256,40 @@ const Caixa = ({ navigation }: { navigation: any }) => {
 
   // Renderizar o componente
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>📊 Gerenciamento do Caixa</Text>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
+      <Text style={[styles.title, { color: theme.text }]}>
+        📊 Gerenciamento do Caixa
+      </Text>
 
       {carregando ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Carregando dados...</Text>
+          <ActivityIndicator size="large" color={theme.accent || "#007bff"} />
+          <Text
+            style={[styles.loadingText, { color: theme.accent || "#007bff" }]}
+          >
+            Carregando dados...
+          </Text>
         </View>
       ) : (
         <>
           {/* Painel de Saldo */}
           <View style={styles.saldoContainer}>
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>💰 Saldo Total</Text>
-              <Text style={styles.panelValue}>
+            <View
+              style={[
+                styles.panel,
+                {
+                  backgroundColor: theme.panel,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text style={[styles.panelTitle, { color: theme.text }]}>
+                💰 Saldo Total
+              </Text>
+              <Text style={[styles.panelValue, { color: theme.text }]}>
                 {formatarValor(saldoCaixa.saldo_total)}
               </Text>
             </View>
@@ -275,7 +298,10 @@ const Caixa = ({ navigation }: { navigation: any }) => {
           {/* Botão para adicionar nova transação - visível apenas para usuários do departamento Caixa ou administradores */}
           {mostrarBotaoNovaTransacao && (
             <TouchableOpacity
-              style={styles.addButton}
+              style={[
+                styles.addButton,
+                { backgroundColor: theme.accent || "#007bff" },
+              ]}
               onPress={() => setModalVisible(true)}
             >
               <FontAwesome name="plus" size={20} color="#fff" />
@@ -284,17 +310,33 @@ const Caixa = ({ navigation }: { navigation: any }) => {
           )}
 
           {/* Seção de Entradas */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📈 Entradas</Text>
+          <View
+            style={[
+              styles.section,
+              { backgroundColor: theme.panel, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              📈 Entradas
+            </Text>
 
             {totaisMensais.length > 0 ? (
               totaisMensais.map((total, index) => (
                 <TouchableOpacity
                   key={`entrada-${total.mes}-${total.ano}-${index}`}
-                  style={styles.panel}
+                  style={[
+                    styles.panel,
+                    {
+                      backgroundColor: theme.panel,
+                      borderColor: theme.border,
+                      marginHorizontal: 5,
+                      marginTop: 5,
+                      marginBottom: 10,
+                    },
+                  ]}
                   onPress={() => abrirDetalhes("entrada", total.mes, total.ano)}
                 >
-                  <Text style={styles.panelTitle}>
+                  <Text style={[styles.panelTitle, { color: theme.text }]}>
                     {total.mes}/{total.ano}
                   </Text>
                   <Text style={[styles.panelValue, styles.entradaText]}>
@@ -303,22 +345,40 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyText}>Nenhuma entrada registrada</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                Nenhuma entrada registrada
+              </Text>
             )}
           </View>
 
           {/* Seção de Saídas */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📉 Saídas</Text>
+          <View
+            style={[
+              styles.section,
+              { backgroundColor: theme.panel, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              📉 Saídas
+            </Text>
 
             {totaisMensais.length > 0 ? (
               totaisMensais.map((total, index) => (
                 <TouchableOpacity
                   key={`saida-${total.mes}-${total.ano}-${index}`}
-                  style={styles.panel}
+                  style={[
+                    styles.panel,
+                    {
+                      backgroundColor: theme.panel,
+                      borderColor: theme.border,
+                      marginHorizontal: 5,
+                      marginTop: 5,
+                      marginBottom: 10,
+                    },
+                  ]}
                   onPress={() => abrirDetalhes("saida", total.mes, total.ano)}
                 >
-                  <Text style={styles.panelTitle}>
+                  <Text style={[styles.panelTitle, { color: theme.text }]}>
                     {total.mes}/{total.ano}
                   </Text>
                   <Text style={[styles.panelValue, styles.saidaText]}>
@@ -327,7 +387,9 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
               ))
             ) : (
-              <Text style={styles.emptyText}>Nenhuma saída registrada</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                Nenhuma saída registrada
+              </Text>
             )}
           </View>
 
@@ -339,72 +401,144 @@ const Caixa = ({ navigation }: { navigation: any }) => {
             onRequestClose={() => setModalVisible(false)}
             statusBarTranslucent={true}
           >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
+            <View
+              style={[
+                styles.modalContainer,
+                { backgroundColor: "rgba(0,0,0,0.5)" },
+              ]}
+            >
+              <View
+                style={[
+                  styles.modalContent,
+                  { backgroundColor: theme.panel, borderColor: theme.border },
+                ]}
+              >
                 <ScrollView style={{ marginBottom: 10 }}>
-                  <Text style={styles.modalTitle}>Nova Transação</Text>
+                  <Text style={[styles.modalTitle, { color: theme.text }]}>
+                    Nova Transação
+                  </Text>
 
                   {/* Tipo de Transação */}
-                  <Text style={styles.label}>Tipo:</Text>
-                  <View style={styles.pickerContainer}>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    Tipo:
+                  </Text>
+                  <View
+                    style={[
+                      styles.pickerContainer,
+                      {
+                        backgroundColor: "#FFFFFF",
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
                     <Picker
                       selectedValue={novaTransacao.tipo}
                       onValueChange={(itemValue) =>
                         setNovaTransacao({ ...novaTransacao, tipo: itemValue })
                       }
                       style={styles.picker}
+                      dropdownIconColor="#000000"
+                      itemStyle={{ color: "#000000" }}
                     >
-                      <Picker.Item label="Entrada" value="entrada" />
-                      <Picker.Item label="Saída" value="saida" />
+                      <Picker.Item
+                        label="Entrada"
+                        value="entrada"
+                        color="#000000"
+                      />
+                      <Picker.Item
+                        label="Saída"
+                        value="saida"
+                        color="#000000"
+                      />
                     </Picker>
                   </View>
 
                   {/* Mês */}
-                  <Text style={styles.label}>Mês:</Text>
-                  <View style={styles.pickerContainer}>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    Mês:
+                  </Text>
+                  <View
+                    style={[
+                      styles.pickerContainer,
+                      {
+                        backgroundColor: "#FFFFFF",
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
                     <Picker
                       selectedValue={novaTransacao.mes}
                       onValueChange={(itemValue) =>
                         setNovaTransacao({ ...novaTransacao, mes: itemValue })
                       }
                       style={styles.picker}
+                      dropdownIconColor="#000000"
+                      itemStyle={{ color: "#000000" }}
                     >
-                      <Picker.Item label="Selecione o mês" value="" />
+                      <Picker.Item
+                        label="Selecione o mês"
+                        value=""
+                        color="#000000"
+                      />
                       {meses.map((mes) => (
                         <Picker.Item
                           key={mes.value}
                           label={mes.label}
                           value={mes.value}
+                          color="#000000"
                         />
                       ))}
                     </Picker>
                   </View>
 
                   {/* Ano */}
-                  <Text style={styles.label}>Ano:</Text>
-                  <View style={styles.pickerContainer}>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    Ano:
+                  </Text>
+                  <View
+                    style={[
+                      styles.pickerContainer,
+                      {
+                        backgroundColor: "#FFFFFF",
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
                     <Picker
                       selectedValue={novaTransacao.ano}
                       onValueChange={(itemValue) =>
                         setNovaTransacao({ ...novaTransacao, ano: itemValue })
                       }
                       style={styles.picker}
+                      dropdownIconColor="#000000"
+                      itemStyle={{ color: "#000000" }}
                     >
                       {anos.map((ano) => (
                         <Picker.Item
                           key={ano}
                           label={ano.toString()}
                           value={ano}
+                          color="#000000"
                         />
                       ))}
                     </Picker>
                   </View>
 
                   {/* Valor */}
-                  <Text style={styles.label}>Valor (R$):</Text>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    Valor (R$):
+                  </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: "#FFFFFF",
+                        color: "#000000",
+                        borderColor: theme.border,
+                      },
+                    ]}
                     placeholder="0,00"
+                    placeholderTextColor="#666666"
                     keyboardType="numeric"
                     value={novaTransacao.valor}
                     onChangeText={(text) =>
@@ -413,10 +547,21 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                   />
 
                   {/* Descrição */}
-                  <Text style={styles.label}>Descrição:</Text>
+                  <Text style={[styles.label, { color: theme.text }]}>
+                    Descrição:
+                  </Text>
                   <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={[
+                      styles.input,
+                      styles.textArea,
+                      {
+                        backgroundColor: "#FFFFFF",
+                        color: "#000000",
+                        borderColor: theme.border,
+                      },
+                    ]}
                     placeholder="Descreva a transação"
+                    placeholderTextColor="#666666"
                     multiline
                     numberOfLines={3}
                     value={novaTransacao.descricao}
@@ -429,14 +574,20 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                 {/* Botões de ação */}
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
-                    style={[styles.button, styles.cancelButton]}
+                    style={[
+                      styles.button,
+                      { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
+                    ]}
                     onPress={() => setModalVisible(false)}
                   >
                     <Text style={styles.buttonText}>Cancelar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.button, styles.saveButton]}
+                    style={[
+                      styles.button,
+                      { backgroundColor: theme.accent || "#007bff" },
+                    ]}
                     onPress={registrarTransacao}
                   >
                     <Text style={styles.buttonText}>Salvar</Text>
@@ -454,9 +605,19 @@ const Caixa = ({ navigation }: { navigation: any }) => {
             onRequestClose={() => setModalDetalhesVisible(false)}
             statusBarTranslucent={true}
           >
-            <View style={styles.modalContainer}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>
+            <View
+              style={[
+                styles.modalContainer,
+                { backgroundColor: "rgba(0,0,0,0.5)" },
+              ]}
+            >
+              <View
+                style={[
+                  styles.modalContent,
+                  { backgroundColor: theme.panel, borderColor: theme.border },
+                ]}
+              >
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
                   {tipoSelecionado === "entrada" ? "Entradas" : "Saídas"} -{" "}
                   {mesSelecionado}/{anoSelecionado}
                 </Text>
@@ -466,32 +627,66 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                     style={[styles.transacoesLista, { marginBottom: 10 }]}
                   >
                     {transacoesFiltradas.map((transacao) => (
-                      <View key={transacao.id} style={styles.transacaoItem}>
+                      <View
+                        key={transacao.id}
+                        style={[
+                          styles.transacaoItem,
+                          {
+                            backgroundColor: theme.background,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                      >
                         <View style={styles.transacaoHeader}>
-                          <Text style={styles.transacaoValor}>
+                          <Text
+                            style={[
+                              styles.transacaoValor,
+                              {
+                                color:
+                                  tipoSelecionado === "entrada"
+                                    ? "#28a745"
+                                    : "#dc3545",
+                              },
+                            ]}
+                          >
                             {formatarValor(transacao.valor)}
                           </Text>
-                          <Text style={styles.transacaoData}>
+                          <Text
+                            style={[
+                              styles.transacaoData,
+                              { color: theme.textSecondary },
+                            ]}
+                          >
                             {new Date(
                               transacao.data_registro
                             ).toLocaleDateString("pt-BR")}
                           </Text>
                         </View>
-                        <Text style={styles.transacaoDescricao}>
+                        <Text
+                          style={[
+                            styles.transacaoDescricao,
+                            { color: theme.text },
+                          ]}
+                        >
                           {transacao.descricao}
                         </Text>
                       </View>
                     ))}
                   </ScrollView>
                 ) : (
-                  <Text style={styles.emptyText}>
+                  <Text
+                    style={[styles.emptyText, { color: theme.textSecondary }]}
+                  >
                     Nenhuma transação encontrada para este período
                   </Text>
                 )}
 
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
-                    style={[styles.button, styles.closeButton, { flex: 1 }]}
+                    style={[
+                      styles.button,
+                      { backgroundColor: "#007bff", flex: 1 }, // Cor vermelha fixa para o botão de fechar
+                    ]}
                     onPress={() => setModalDetalhesVisible(false)}
                   >
                     <Text style={styles.buttonText}>Fechar</Text>
@@ -538,6 +733,8 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 15,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -572,6 +769,10 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 20,
+    borderRadius: 10,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
   sectionTitle: {
     fontSize: 20,
@@ -660,7 +861,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: "#6c757d",
+    backgroundColor: "#dc3545", // Cor vermelha para o botão de cancelar
   },
   saveButton: {
     backgroundColor: "#28a745",
@@ -683,6 +884,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
     borderLeftWidth: 3,
     borderLeftColor: "#007bff",
   },

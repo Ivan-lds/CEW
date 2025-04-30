@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import {
   SafeAreaView,
   View,
@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { API_URL, API_CONFIG } from "../config";
 import LaundryGas from "./LaundryGas";
+import { ThemeContext } from "../ThemeContext";
 
 interface Notification {
   id: number;
@@ -60,6 +61,9 @@ const formatarData = (dataString: string | null): string => {
 };
 
 const Home = ({ route }: { route: any }) => {
+  // Usar o contexto de tema global
+  const { theme, isDarkMode } = useContext(ThemeContext);
+
   // Verificar se há parâmetros de rota para atualizar notificações
   const refreshNotifications = route?.params?.refreshNotifications;
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -791,26 +795,68 @@ const Home = ({ route }: { route: any }) => {
 
   if (!userId || carregando) {
     return (
-      <SafeAreaView style={[styles.safeContainer, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Carregando...</Text>
+      <SafeAreaView
+        style={[
+          styles.safeContainer,
+          styles.centerContent,
+          { backgroundColor: theme.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={theme.accent || "#007bff"} />
+        <Text
+          style={[styles.loadingText, { color: theme.accent || "#007bff" }]}
+        >
+          Carregando...
+        </Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView
+      style={[styles.safeContainer, { backgroundColor: theme.background }]}
+    >
       {/* Cabeçalho */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>CEW</Text>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.panel, borderBottomColor: theme.border },
+        ]}
+      >
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: theme.text,
+              borderLeftColor: theme.accent || "#1382AB",
+              borderTopColor: theme.accent || "#1382AB",
+            },
+          ]}
+        >
+          CEW
+        </Text>
         <TouchableOpacity
           onPress={toggleModal}
           style={{ padding: 10, cursor: "pointer" }}
         >
           <View style={styles.notificationIconContainer}>
-            <FontAwesome name="bell" size={24} color="#1382AB" />
+            <FontAwesome
+              name="bell"
+              size={24}
+              color={theme.accent || "#1382AB"}
+              style={{
+                textShadowColor: "#FFFFFF",
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 4,
+              }}
+            />
             {notificacoesNaoLidas > 0 && (
-              <View style={styles.notificationBadge}>
+              <View
+                style={[
+                  styles.notificationBadge,
+                  { backgroundColor: theme.danger || "red" },
+                ]}
+              >
                 <Text style={styles.notificationBadgeText}>
                   {notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas}
                 </Text>
@@ -824,7 +870,7 @@ const Home = ({ route }: { route: any }) => {
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={true}
-        style={styles.scrollView}
+        style={[styles.scrollView, { backgroundColor: theme.background }]}
       >
         {carregando ? (
           <ActivityIndicator
@@ -835,10 +881,19 @@ const Home = ({ route }: { route: any }) => {
         ) : (
           <>
             {/* Painel de Tarefas do Usuário */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>📋 Minhas Tarefas</Text>
+            <View
+              style={[
+                styles.panel,
+                { backgroundColor: theme.panel, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.panelTitle, { color: theme.text }]}>
+                📋 Minhas Tarefas
+              </Text>
               {emViagem ? (
-                <Text style={styles.emViagemText}>
+                <Text
+                  style={[styles.emViagemText, { color: theme.textSecondary }]}
+                >
                   Você está em viagem. Bom descanso! 🌴
                 </Text>
               ) : tarefasHoje.length > 0 ? (
@@ -846,10 +901,21 @@ const Home = ({ route }: { route: any }) => {
                   {tarefasHoje.map((tarefa) => (
                     <View key={tarefa.id} style={styles.tarefaItem}>
                       <View style={styles.tarefaInfo}>
-                        <Text style={styles.tarefaNome}>{tarefa.nome}</Text>
+                        <Text
+                          style={[styles.tarefaNome, { color: theme.text }]}
+                        >
+                          {tarefa.nome}
+                        </Text>
                         {tarefa.proxima_execucao && (
                           <>
-                            <Text style={styles.separador}>-</Text>
+                            <Text
+                              style={[
+                                styles.separador,
+                                { color: theme.textSecondary },
+                              ]}
+                            >
+                              -
+                            </Text>
                             <Text style={styles.tarefaData}>
                               {formatarData(tarefa.proxima_execucao)}
                             </Text>
@@ -879,7 +945,12 @@ const Home = ({ route }: { route: any }) => {
                   ))}
                 </>
               ) : (
-                <Text style={styles.semTarefasText}>
+                <Text
+                  style={[
+                    styles.semTarefasText,
+                    { color: theme.success || "#28a745" },
+                  ]}
+                >
                   Nenhuma tarefa pendente para hoje! 🎉
                 </Text>
               )}
@@ -887,13 +958,28 @@ const Home = ({ route }: { route: any }) => {
               {/* Histórico de Tarefas */}
               {historico.length > 0 && (
                 <>
-                  <Text style={[styles.subTitle, styles.historicoTitle]}>
+                  <Text
+                    style={[
+                      styles.subTitle,
+                      styles.historicoTitle,
+                      { color: theme.text, borderTopColor: theme.border },
+                    ]}
+                  >
                     Histórico dos Últimos 7 Dias:
                   </Text>
                   {historico.map((item, index) => (
                     <View key={index} style={styles.historicoItem}>
-                      <Text style={styles.historicoData}>{item.data}</Text>
-                      <Text style={styles.historicoTarefas}>
+                      <Text
+                        style={[
+                          styles.historicoData,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        {item.data}
+                      </Text>
+                      <Text
+                        style={[styles.historicoTarefas, { color: theme.text }]}
+                      >
                         {Array.isArray(item.tarefas)
                           ? item.tarefas.join(", ")
                           : ""}
@@ -905,11 +991,22 @@ const Home = ({ route }: { route: any }) => {
             </View>
 
             {/* Painel de Roupas */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>🧺 Roupas</Text>
+            <View
+              style={[
+                styles.panel,
+                { backgroundColor: theme.panel, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.panelTitle, { color: theme.text }]}>
+                🧺 Roupas
+              </Text>
               {agruparUsuariosPorDia().map((item) => (
                 <View key={item.dia} style={styles.diaLavanderiaItem}>
-                  <Text style={styles.diaLavanderiaNome}>{item.dia}:</Text>
+                  <Text
+                    style={[styles.diaLavanderiaNome, { color: theme.text }]}
+                  >
+                    {item.dia}:
+                  </Text>
                   {item.usuarios.length > 0 ? (
                     <View style={styles.usuariosContainer}>
                       {item.usuarios.map((usuario, index) => (
@@ -917,9 +1014,18 @@ const Home = ({ route }: { route: any }) => {
                           key={index}
                           style={[
                             styles.usuarioItem,
-                            index === 0 && styles.usuarioPrimeiro,
-                            index === 1 && styles.usuarioSegundo,
-                            index === 2 && styles.usuarioTerceiro,
+                            index === 0 && [
+                              styles.usuarioPrimeiro,
+                              { backgroundColor: theme.accent || "#1382AB" },
+                            ],
+                            index === 1 && [
+                              styles.usuarioSegundo,
+                              { backgroundColor: theme.success || "#28a745" },
+                            ],
+                            index === 2 && [
+                              styles.usuarioTerceiro,
+                              { backgroundColor: theme.danger || "#dc3545" },
+                            ],
                           ]}
                         >
                           {usuario}
@@ -927,30 +1033,53 @@ const Home = ({ route }: { route: any }) => {
                       ))}
                     </View>
                   ) : (
-                    <Text style={styles.semUsuariosText}>Nenhum usuário</Text>
+                    <Text
+                      style={[
+                        styles.semUsuariosText,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      Nenhum usuário
+                    </Text>
                   )}
                 </View>
               ))}
             </View>
 
             {/* Painel de Aniversários */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>🎉 Aniversários</Text>
+            <View
+              style={[
+                styles.panel,
+                { backgroundColor: theme.panel, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.panelTitle, { color: theme.text }]}>
+                🎉 Aniversários
+              </Text>
               {aniversarios.length > 0 ? (
                 aniversarios.map((aniversario) => (
                   <View key={aniversario.id} style={styles.aniversarioItem}>
-                    <Text style={styles.aniversarioNome}>
+                    <Text
+                      style={[styles.aniversarioNome, { color: theme.text }]}
+                    >
                       - {aniversario.name}:
                     </Text>
                     <Text
                       style={[
                         styles.aniversarioData,
+                        { color: theme.accent || "#1382AB" }, // Cor padrão para aniversários futuros
                         verificarStatusAniversario(
                           aniversario.aniversario_original
-                        ) === "hoje" && styles.aniversarioHoje,
+                        ) === "hoje" && [
+                          styles.aniversarioHoje,
+                          { color: theme.success || "#28a745" },
+                        ],
                         verificarStatusAniversario(
                           aniversario.aniversario_original
-                        ) === "passado" && styles.aniversarioPassado,
+                        ) === "passado" && [
+                          styles.aniversarioPassado,
+                          { color: theme.danger || "#dc3545" },
+                        ],
                       ]}
                     >
                       {aniversario.aniversario}
@@ -958,15 +1087,27 @@ const Home = ({ route }: { route: any }) => {
                   </View>
                 ))
               ) : (
-                <Text style={styles.semAniversariosText}>
+                <Text
+                  style={[
+                    styles.semAniversariosText,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   Nenhum aniversário cadastrado.
                 </Text>
               )}
             </View>
 
             {/* Painel de Controle de Gás */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>⛽ Controle de Gás</Text>
+            <View
+              style={[
+                styles.panel,
+                { backgroundColor: theme.panel, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.panelTitle, { color: theme.text }]}>
+                ⛽ Controle de Gás
+              </Text>
               <LaundryGas />
             </View>
           </>
@@ -974,27 +1115,32 @@ const Home = ({ route }: { route: any }) => {
       </ScrollView>
 
       {/* Menu Inferior */}
-      <View style={styles.menu}>
+      <View
+        style={[
+          styles.menu,
+          { backgroundColor: theme.panel, borderTopColor: "#007bff" },
+        ]}
+      >
         <Text
-          style={styles.menuItem}
+          style={[styles.menuItem, { color: theme.text }]}
           onPress={() => navigation.navigate("Home")}
         >
           📋
         </Text>
         <Text
-          style={styles.menuItem}
+          style={[styles.menuItem, { color: theme.text }]}
           onPress={() => navigation.navigate("Departaments")}
         >
           🛠️
         </Text>
         <Text
-          style={styles.menuItem}
+          style={[styles.menuItem, { color: theme.text }]}
           onPress={() => navigation.navigate("Budget")}
         >
           💰
         </Text>
         <Text
-          style={styles.menuItem}
+          style={[styles.menuItem, { color: theme.text }]}
           onPress={() => navigation.navigate(isAdmin ? "Admin" : "Configs")}
         >
           ⚙️
@@ -1003,11 +1149,25 @@ const Home = ({ route }: { route: any }) => {
 
       {/* Modal de Notificações */}
       <Modal visible={isModalVisible} animationType="slide" transparent={false}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>📨 Notificações</Text>
+        <View
+          style={[styles.modalContainer, { backgroundColor: theme.background }]}
+        >
+          <Text style={[styles.modalTitle, { color: theme.text }]}>
+            📨 Notificações
+          </Text>
           {notifications.length === 0 ? (
-            <View style={styles.emptyNotifications}>
-              <Text style={styles.emptyNotificationsText}>
+            <View
+              style={[
+                styles.emptyNotifications,
+                { backgroundColor: theme.background },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.emptyNotificationsText,
+                  { color: theme.textSecondary },
+                ]}
+              >
                 Nenhuma notificação disponível
               </Text>
             </View>
@@ -1015,30 +1175,62 @@ const Home = ({ route }: { route: any }) => {
             <FlatList
               data={notifications}
               keyExtractor={(item) => item.id.toString()}
+              style={{ backgroundColor: theme.background }}
               renderItem={({ item }: { item: Notification }) => (
                 <TouchableOpacity
                   style={[
                     styles.notificationItem,
-                    !item.lida && styles.notificationUnread,
+                    { backgroundColor: theme.panel, borderColor: theme.border },
+                    !item.lida && [
+                      styles.notificationUnread,
+                      {
+                        borderLeftColor: theme.accent || "#1382AB",
+                        backgroundColor: isDarkMode ? theme.panel : "#f0f9ff",
+                      },
+                    ],
                   ]}
                   onPress={() => marcarComoLida(item.id)}
                 >
                   <View style={styles.notificationHeader}>
-                    <Text style={styles.notificationDepartment}>
+                    <Text
+                      style={[
+                        styles.notificationDepartment,
+                        { color: theme.accent || "#1382AB" },
+                      ]}
+                    >
                       {getDepartmentIcon(item.departamento)} {item.departamento}
                     </Text>
-                    <Text style={styles.notificationDate}>
+                    <Text
+                      style={[
+                        styles.notificationDate,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
                       {item.data_envio}
                     </Text>
                   </View>
-                  <Text style={styles.notificationText}>{item.mensagem}</Text>
+                  <Text
+                    style={[styles.notificationText, { color: theme.text }]}
+                  >
+                    {item.mensagem}
+                  </Text>
                   {item.remetente_nome && (
-                    <Text style={styles.notificationSender}>
+                    <Text
+                      style={[
+                        styles.notificationSender,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
                       Enviado por: {item.remetente_nome}
                     </Text>
                   )}
                   {!item.lida && (
-                    <Text style={styles.notificationStatus}>
+                    <Text
+                      style={[
+                        styles.notificationStatus,
+                        { color: theme.accent || "#1382AB" },
+                      ]}
+                    >
                       Não lida • Toque para marcar como lida
                     </Text>
                   )}
@@ -1046,8 +1238,16 @@ const Home = ({ route }: { route: any }) => {
               )}
             />
           )}
-          <TouchableOpacity style={styles.closeButton} onPress={toggleModal}>
-            <Text style={styles.closeButtonText}>Fechar</Text>
+          <TouchableOpacity
+            style={[
+              styles.closeButton,
+              { backgroundColor: theme.accent || "#007bff" },
+            ]}
+            onPress={toggleModal}
+          >
+            <Text style={[styles.closeButtonText, { color: "#fff" }]}>
+              Fechar
+            </Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -1067,7 +1267,7 @@ const styles = StyleSheet.create({
   },
   safeContainer: {
     flex: 1,
-    paddingTop: StatusBar.currentHeight,
+    paddingTop: 0,
     backgroundColor: "#f8f9fa",
     height: "100%", // Garante que ocupe toda a altura da tela
   },
@@ -1105,6 +1305,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     padding: 15,
     borderRadius: 10,
+    borderWidth: 0.3,
+    borderColor: "#ddd",
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
@@ -1121,11 +1323,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "#ffffff",
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#ddd",
-    marginTop: 10,
+    backgroundColor: "#fff",
+    padding: 13,
+    borderTopWidth: 1, // Aumentando a espessura da borda
+    borderTopColor: "#007bff", // Cor azul padrão para a borda
   },
   menuItem: {
     fontSize: 20,
