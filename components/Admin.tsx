@@ -44,7 +44,6 @@ interface Tarefa {
 }
 
 const Admin = ({ navigation }: { navigation: any }) => {
-
   const { isDarkMode, toggleTheme, theme } = useContext(ThemeContext);
 
   const [taskFrequency, setTaskFrequency] = useState(0);
@@ -53,13 +52,13 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
-  
+
   const [birthdayInput, setBirthdayInput] = useState("");
-  
+
   const [departmentInput, setDepartmentInput] = useState("");
-  
+
   const [laundryDayInput, setLaundryDayInput] = useState("");
-  
+
   // Estado para dados do usuário
   const [userData, setUserData] = useState({
     name: "",
@@ -1639,14 +1638,14 @@ const Admin = ({ navigation }: { navigation: any }) => {
                   ]}
                 >
                   <View style={styles.pessoaInfo}>
-                    <Text style={[styles.pessoaNome, { color: "#F5F5F5" }]}>
+                    <Text style={[styles.pessoaNome, { color: theme.text }]}>
                       {item.name}
                     </Text>
                     {item.departamento && (
                       <Text
                         style={[
                           styles.pessoaDepartamento,
-                          { color: "#F5F5F5" },
+                          { color: theme.text },
                         ]}
                       >
                         {item.departamento}
