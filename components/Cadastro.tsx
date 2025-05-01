@@ -6,10 +6,14 @@ import axios from "axios";
 import { FontAwesome } from "@expo/vector-icons";
 
 const Cadastro = ({ navigation }: { navigation: any }) => {
+
+  // Estados para os campos de entrada
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Estados para exibição de senha
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -23,7 +27,6 @@ const Cadastro = ({ navigation }: { navigation: any }) => {
       return;
     }
 
-    // Enviar dados ao backend
     axios
       .post("http://192.168.1.55:3001/register", {
         name,

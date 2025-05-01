@@ -19,7 +19,6 @@ interface TrocaGas {
 }
 
 const LaundryGas = () => {
-  // Usar o contexto de tema global
   const { theme } = useContext(ThemeContext);
 
   const [ultimaTroca, setUltimaTroca] = useState("");
@@ -27,7 +26,6 @@ const LaundryGas = () => {
   const [todasTrocas, setTodasTrocas] = useState<TrocaGas[]>([]);
   const [carregando, setCarregando] = useState(false);
 
-  // Buscar última data de troca
   const buscarUltimaTroca = async () => {
     try {
       console.log("Buscando última data de troca...");
@@ -40,16 +38,11 @@ const LaundryGas = () => {
         if (dataDB) {
           console.log("Data recebida do servidor:", dataDB);
 
-          // Garantir que estamos trabalhando apenas com a parte da data (sem horas)
-          // Primeiro, converter para objeto Date se for uma string ISO
           let dataObj: Date;
           if (typeof dataDB === "string") {
-            // Se for uma string ISO completa ou apenas YYYY-MM-DD
             if (dataDB.includes("T")) {
-              // É uma string ISO completa com horas
               dataObj = new Date(dataDB);
             } else {
-              // É apenas YYYY-MM-DD
               const [year, month, day] = dataDB.split("-");
               dataObj = new Date(
                 parseInt(year),
@@ -58,11 +51,10 @@ const LaundryGas = () => {
               );
             }
           } else {
-            // Se já for um objeto Date
             dataObj = new Date(dataDB);
           }
 
-          // Formatar para DD-MM-YYYY
+          // Formata para DD-MM-YYYY
           const day = String(dataObj.getDate()).padStart(2, "0");
           const month = String(dataObj.getMonth() + 1).padStart(2, "0");
           const year = dataObj.getFullYear();
@@ -76,25 +68,21 @@ const LaundryGas = () => {
           setUltimaTroca("");
         }
       } else {
-        // Se a resposta não for bem-sucedida, limpar o estado
         console.log("Resposta não foi bem-sucedida, limpando o estado");
         setUltimaTroca("");
       }
     } catch (error) {
       console.error("Erro ao buscar data da última troca:", error);
-      // Em caso de erro, também limpar o estado
       setUltimaTroca("");
     }
   };
 
-  // Registrar nova troca
   const registrarTroca = async () => {
     if (!novaData) {
       Alert.alert("Erro", "Por favor, insira uma data válida");
       return;
     }
 
-    // Validar formato da data (DD-MM-YYYY)
     const dateRegex = /^(\d{2})-(\d{2})-(\d{4})$/;
     const match = novaData.match(dateRegex);
 
@@ -103,7 +91,6 @@ const LaundryGas = () => {
       return;
     }
 
-    // Converter para formato YYYY-MM-DD para o MySQL
     const [_, day, month, year] = match;
     const formattedDate = `${year}-${month}-${day}`;
 
@@ -128,9 +115,6 @@ const LaundryGas = () => {
     }
   };
 
-  // Função deletarRegistro removida, pois não é mais necessária
-
-  // Buscar todas as trocas de gás
   const buscarTodasTrocas = async () => {
     try {
       setCarregando(true);
@@ -158,18 +142,13 @@ const LaundryGas = () => {
     buscarTodasTrocas();
   }, []);
 
-  // Função deletarDireto removida, pois não é mais necessária
-
-  // Função super simples para deletar registro
   const deletarRegistro = async () => {
     try {
-      // Usar fetch diretamente com o método GET
       const response = await fetch(`${API_URL}/gas/deletar-ultimo`);
       const data = await response.json();
 
       console.log("Resposta do servidor:", data);
 
-      // Atualizar a interface após a exclusão
       buscarUltimaTroca();
       buscarTodasTrocas();
     } catch (error) {
@@ -236,25 +215,19 @@ const LaundryGas = () => {
           ]}
           value={novaData}
           onChangeText={(text) => {
-            // Remove caracteres não numéricos e traços
             const numericText = text.replace(/[^0-9-]/g, "");
 
-            // Lógica para adicionar traços automaticamente
             let formattedText = numericText;
 
-            // Se tiver 2 dígitos e o próximo caractere não for um traço, adiciona um traço
+            // Adiciona traços automaticamente
             if (numericText.length === 2 && !numericText.includes("-")) {
               formattedText = numericText + "-";
-            }
-            // Se tiver 5 caracteres (DD-MM) e o próximo caractere não for um traço, adiciona um traço
-            else if (
+            } else if (
               numericText.length === 5 &&
               numericText.indexOf("-", 3) === -1
             ) {
               formattedText = numericText + "-";
-            }
-            // Limita o tamanho para 10 caracteres (DD-MM-YYYY)
-            else if (numericText.length > 10) {
+            } else if (numericText.length > 10) {
               formattedText = numericText.substring(0, 10);
             }
 
@@ -265,8 +238,9 @@ const LaundryGas = () => {
           maxLength={10}
           keyboardType="numeric"
         />
-        {/* Container para os botões lado a lado */}
+
         <View style={styles.buttonContainer}>
+          {/* Botão de registrar */}
           <TouchableOpacity
             style={[
               styles.button,

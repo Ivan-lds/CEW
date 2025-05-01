@@ -9,7 +9,6 @@ const fs = require("fs");
 const app = express();
 app.use(bodyParser.json());
 
-// Configuração avançada do CORS para aceitar conexões de qualquer origem
 app.use(
   cors({
     origin: "*",
@@ -25,13 +24,11 @@ app.use(
   })
 );
 
-// Middleware para debug de requisições
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
 
-// Endpoint para verificar a saúde do servidor
 app.get("/health", (req, res) => {
   res.status(200).send({
     success: true,
@@ -40,7 +37,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Configuração do multer para upload de arquivos
+// Multer para upload de arquivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadDir = path.join(__dirname, "uploads");
@@ -59,7 +56,7 @@ const upload = multer({ storage: storage });
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "Otakuac.ofc0",
+  password: "CEW-2025",
   database: "casaestudante",
 });
 
@@ -140,7 +137,7 @@ app.post("/login", (req, res) => {
   });
 });
 
-/* Definir Departamentos */
+/* Departamentos */
 app.post("/departamentos", (req, res) => {
   const { name, departamento } = req.body;
   const sql = "UPDATE users SET departamento = ? WHERE name = ?";
@@ -158,7 +155,7 @@ app.get("/departamentos", (req, res) => {
   });
 });
 
-/* Definir Aniversários */
+/* Aniversários */
 app.post("/aniversarios", (req, res) => {
   const { name, date } = req.body;
   const sql = "UPDATE users SET aniversario = ? WHERE name = ?";
@@ -176,7 +173,7 @@ app.get("/aniversarios", (req, res) => {
   });
 });
 
-/* Definir Datas de Fazer o Caixa */
+/* Data para Fazer o Caixa */
 app.post("/data_caixa", (req, res) => {
   const { date } = req.body;
   const sql = "UPDATE caixa SET data_realizacao = ?";
@@ -196,7 +193,7 @@ app.get("/data_caixa", (req, res) => {
 
 /* Pausar ou Retomar Tarefas */
 app.post("/tasks/pause", (req, res) => {
-  const { status } = req.body; // status = "paused" ou "active"
+  const { status } = req.body; 
   const sql = "UPDATE tarefas SET status = ?";
   db.query(sql, [status], (err, result) => {
     if (err) return res.status(500).send(err);
@@ -216,7 +213,7 @@ app.get("/tasks/status", (req, res) => {
   });
 });
 
-/* Transferir Propriedade de Admin */
+/* Transferir Admin */
 app.post("/transfer-admin", (req, res) => {
   const { newAdminId, role } = req.body;
   const sql = "UPDATE users SET role = ? WHERE name = ?";
@@ -238,7 +235,6 @@ app.post("/remove-admin", (req, res) => {
 
 /*Usuários*/
 app.get("/users", (req, res) => {
-  // Modificado para ordenar os usuários pela coluna 'ordem'
   const sql = "SELECT * FROM users ORDER BY ordem ASC";
   db.query(sql, (err, results) => {
     if (err) return res.status(500).send(err);
@@ -260,7 +256,6 @@ app.post("/remove-user", (req, res) => {
     });
   }
 
-  // Primeiro verifica se o usuário existe
   const checkSql = "SELECT * FROM users WHERE name = ?";
   db.query(checkSql, [name], (err, results) => {
     if (err) {
@@ -283,7 +278,6 @@ app.post("/remove-user", (req, res) => {
     const userId = results[0].id;
     console.log("ID do usuário encontrado:", userId);
 
-    // Usar transação para garantir que todas as operações sejam executadas ou nenhuma
     db.beginTransaction((err) => {
       if (err) {
         console.error("Erro ao iniciar transação:", err);
@@ -294,7 +288,7 @@ app.post("/remove-user", (req, res) => {
         });
       }
 
-      // 1. Primeiro, remover registros de execucoes_tarefas onde o usuário é responsável
+      // 1. Remove registros de execucoes_tarefas onde o usuário é responsável
       const deleteExecucoesSql =
         "DELETE FROM execucoes_tarefas WHERE responsavel_id = ?";
       db.query(deleteExecucoesSql, [userId], (err) => {
@@ -311,7 +305,7 @@ app.post("/remove-user", (req, res) => {
 
         console.log("Execuções de tarefas removidas com sucesso");
 
-        // 2. Remover registros de execucoes_tarefas relacionados às tarefas do usuário
+        // 2. Remove registros de execucoes_tarefas relacionados às tarefas do usuário
         const deleteExecucoesTarefasSql = `
           DELETE FROM execucoes_tarefas
           WHERE tarefa_id IN (SELECT id FROM tarefas WHERE responsavel_id = ?)
@@ -336,7 +330,7 @@ app.post("/remove-user", (req, res) => {
             "Execuções relacionadas às tarefas do usuário removidas com sucesso"
           );
 
-          // 3. Remover registros de feriados relacionados às tarefas do usuário
+          // 3. Remove registros de feriados relacionados às tarefas do usuário
           const deleteFeriadosSql = `
             DELETE FROM feriados
             WHERE tarefa_id IN (SELECT id FROM tarefas WHERE responsavel_id = ?)
@@ -361,7 +355,7 @@ app.post("/remove-user", (req, res) => {
               "Feriados relacionados às tarefas do usuário removidos com sucesso"
             );
 
-            // 4. Remover tarefas do usuário
+            // 4. Remove tarefas do usuário
             const deleteTarefasSql =
               "DELETE FROM tarefas WHERE responsavel_id = ?";
             db.query(deleteTarefasSql, [userId], (err) => {
@@ -378,7 +372,7 @@ app.post("/remove-user", (req, res) => {
 
               console.log("Tarefas do usuário removidas com sucesso");
 
-              // 5. Remover registros de roupas do usuário
+              // 5. Remove registros de roupas do usuário
               const deleteRoupasSql = "DELETE FROM roupas WHERE usuario_id = ?";
               db.query(deleteRoupasSql, [userId], (err) => {
                 if (err) {
@@ -394,13 +388,11 @@ app.post("/remove-user", (req, res) => {
 
                 console.log("Registros de roupas removidos com sucesso");
 
-                // 5.5. Remover registros de transações do caixa relacionadas ao usuário
+                // 5.5. Remove registros de transações do caixa relacionadas ao usuário
                 const deleteTransacoesSql =
                   "DELETE FROM caixa_transacoes WHERE usuario_id = ?";
                 db.query(deleteTransacoesSql, [userId], (err) => {
                   if (err) {
-                    // Se ocorrer um erro, pode ser porque a coluna não existe ou não há registros
-                    // Nesse caso, vamos apenas continuar com a exclusão do usuário
                     console.log(
                       "Aviso: Não foi possível remover transações do caixa. Continuando com a exclusão do usuário."
                     );
@@ -408,9 +400,7 @@ app.post("/remove-user", (req, res) => {
                     console.log("Transações do caixa removidas com sucesso");
                   }
 
-                  // 6. Remover notificações relacionadas ao usuário
-                  // Como a tabela notificacoes tem ON DELETE SET NULL na coluna remetente_id,
-                  // não precisamos excluir as notificações, apenas atualizar o remetente_id para NULL
+                  // 6. Remove notificações relacionadas ao usuário
                   const updateNotificacoesSql =
                     "UPDATE notificacoes SET remetente_id = NULL WHERE remetente_id = ?";
                   db.query(updateNotificacoesSql, [userId], (err) => {
@@ -419,7 +409,7 @@ app.post("/remove-user", (req, res) => {
                         "Aviso: Não foi possível atualizar notificações. Continuando com a exclusão do usuário."
                       );
 
-                      // 7. Remover registros de viagens do usuário
+                      // 7. Remove registros de viagens do usuário
                       const deleteViagensSql =
                         "DELETE FROM viagens WHERE usuario_id = ?";
                       db.query(deleteViagensSql, [userId], (err) => {
@@ -433,7 +423,7 @@ app.post("/remove-user", (req, res) => {
                           );
                         }
 
-                        // 8. Remover o usuário
+                        // 8. Remove o usuário
                         const deleteUserSql = "DELETE FROM users WHERE id = ?";
                         db.query(deleteUserSql, [userId], (err) => {
                           if (err) {
@@ -447,7 +437,6 @@ app.post("/remove-user", (req, res) => {
                             });
                           }
 
-                          // Commit da transação
                           db.commit((err) => {
                             if (err) {
                               return db.rollback(() => {
@@ -472,12 +461,12 @@ app.post("/remove-user", (req, res) => {
                         });
                       });
 
-                      return; // Importante: retornar aqui para não continuar com o fluxo normal
+                      return; 
                     }
 
                     console.log("Notificações atualizadas com sucesso");
 
-                    // 7. Remover registros de viagens do usuário
+                    // 7. Remove registros de viagens do usuário
                     const deleteViagensSql =
                       "DELETE FROM viagens WHERE usuario_id = ?";
                     db.query(deleteViagensSql, [userId], (err) => {
@@ -497,7 +486,7 @@ app.post("/remove-user", (req, res) => {
 
                       console.log("Viagens do usuário removidas com sucesso");
 
-                      // 8. Remover o usuário
+                      // 8. Remove o usuário
                       const deleteUserSql = "DELETE FROM users WHERE id = ?";
                       db.query(deleteUserSql, [userId], (err) => {
                         if (err) {
@@ -511,7 +500,6 @@ app.post("/remove-user", (req, res) => {
                           });
                         }
 
-                        // Commit da transação
                         db.commit((err) => {
                           if (err) {
                             return db.rollback(() => {
@@ -625,7 +613,7 @@ app.post("/tarefas", async (req, res) => {
   console.log("Recebido request para criar tarefa:", req.body);
 
   try {
-    // Buscar o primeiro usuário disponível na ordem
+    // Busca o primeiro usuário disponível na ordem
     const usuariosDisponiveis = await new Promise((resolve, reject) => {
       const sqlUsuarios = `
         SELECT id
@@ -651,7 +639,7 @@ app.post("/tarefas", async (req, res) => {
     const responsavelId = usuariosDisponiveis[0].id;
     console.log(`Atribuindo tarefa ao responsável ID ${responsavelId}`);
 
-    // Calcular a próxima execução (hoje + intervalo_dias)
+    // Calcula a próxima execução (hoje + intervalo_dias)
     const proximaExecucao = new Date();
     proximaExecucao.setDate(
       proximaExecucao.getDate() + parseInt(intervalo_dias)
@@ -693,7 +681,7 @@ app.post("/tarefas", async (req, res) => {
   }
 });
 
-// Listar todas as tarefas
+// Lista todas as tarefas
 app.get("/tarefas", (req, res) => {
   const sql = `
     SELECT t.*,
@@ -723,7 +711,7 @@ app.get("/tarefas", (req, res) => {
   });
 });
 
-// Atualizar intervalo de dias da tarefa
+// Atualiza intervalo de dias da tarefa
 app.put("/tarefas/:id/intervalo", (req, res) => {
   const { id } = req.params;
   const { intervalo_dias } = req.body;
@@ -793,11 +781,10 @@ app.put("/tarefas/:id/pausar", (req, res) => {
   });
 });
 
-// Rota para deletar tarefa
+// Rotas para deletar tarefas
 app.delete("/tarefas/:id", (req, res) => {
   const { id } = req.params;
 
-  // Usar transação para garantir que todas as operações sejam executadas
   db.beginTransaction((err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
@@ -808,7 +795,6 @@ app.delete("/tarefas/:id", (req, res) => {
       });
     }
 
-    // Primeiro, deletar as execuções
     db.query(
       "DELETE FROM execucoes_tarefas WHERE tarefa_id = ?",
       [id],
@@ -824,7 +810,6 @@ app.delete("/tarefas/:id", (req, res) => {
           });
         }
 
-        // Depois, deletar os feriados
         db.query("DELETE FROM feriados WHERE tarefa_id = ?", [id], (err) => {
           if (err) {
             return db.rollback(() => {
@@ -837,7 +822,6 @@ app.delete("/tarefas/:id", (req, res) => {
             });
           }
 
-          // Por fim, deletar a tarefa
           db.query("DELETE FROM tarefas WHERE id = ?", [id], (err, result) => {
             if (err) {
               return db.rollback(() => {
@@ -850,7 +834,6 @@ app.delete("/tarefas/:id", (req, res) => {
               });
             }
 
-            // Commit da transação
             db.commit((err) => {
               if (err) {
                 return db.rollback(() => {
@@ -877,9 +860,8 @@ app.delete("/tarefas/:id", (req, res) => {
 
 /* Rotas de Agendamento de Tarefas */
 
-// Verificar e atualizar responsáveis das tarefas
+// Verifica e atualiza responsáveis das tarefas
 app.post("/tarefas/atualizar-responsaveis", (req, res) => {
-  // Busca todas as tarefas que precisam de atualização
   const sql = `
     SELECT t.id, t.nome, t.responsavel_id, t.proxima_execucao
     FROM tarefas t
@@ -937,7 +919,7 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
             }
 
             if (responsaveis.length === 0) {
-              // Se não encontrou ninguém elegível, busca o primeiro usuário disponível
+              // Se não encontrar ninguém, busca o primeiro usuário disponível
               const sqlPrimeiroDisponivel = `
                 SELECT u.id
                 FROM users u
@@ -965,7 +947,6 @@ app.post("/tarefas/atualizar-responsaveis", (req, res) => {
       });
     });
 
-    // Executa todas as atualizações
     Promise.all(processarTarefas)
       .then(() => {
         res.send({
@@ -1000,11 +981,10 @@ function atualizarResponsavel(tarefaId, responsavelId, resolve, reject) {
   });
 }
 
-// Buscar tarefas com agendamento
+// Busca tarefas com agendamento
 app.get("/tarefas/agendamento", (req, res) => {
   console.log("Iniciando busca de tarefas com agendamento");
 
-  // Query simplificada para teste
   const sql = `
     SELECT
       t.*,
@@ -1039,7 +1019,6 @@ app.get("/tarefas/agendamento", (req, res) => {
 // Função para encontrar o próximo responsável disponível
 const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
   return new Promise((resolve, reject) => {
-    // Buscar o ID do usuário que executou a tarefa (o usuário atual)
     const sqlExecutor = `
       SELECT responsavel_id
       FROM execucoes_tarefas
@@ -1054,14 +1033,12 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
         return reject(err);
       }
 
-      // ID do usuário que acabou de executar a tarefa (pode ser diferente do responsável atual)
       const executorId =
         ultimaExecucao.length > 0 ? ultimaExecucao[0].responsavel_id : null;
       console.log(
         `Último executor da tarefa ${tarefaId}: ${executorId || "Nenhum"}`
       );
 
-      // Buscar todos os usuários ordenados por ordem
       const sqlTodosUsuarios = `
         SELECT id, name, ordem, em_viagem
         FROM users
@@ -1087,7 +1064,7 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
           )
         );
 
-        // Filtrar apenas usuários disponíveis (não em viagem)
+        // Filtra apenas usuários disponíveis (que não estejam em viagem)
         // E que não sejam o usuário que acabou de executar a tarefa
         const usuariosDisponiveis = todosUsuarios.filter(
           (u) => !u.em_viagem && (executorId === null || u.id !== executorId)
@@ -1095,7 +1072,6 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
 
         if (usuariosDisponiveis.length === 0) {
           console.log("Nenhum usuário disponível encontrado");
-          // Se não houver usuários disponíveis, retornar qualquer usuário não em viagem
           const qualquerDisponivel = todosUsuarios.find((u) => !u.em_viagem);
           return resolve(qualquerDisponivel ? qualquerDisponivel.id : null);
         }
@@ -1107,10 +1083,8 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
           )
         );
 
-        // Ordenar os usuários disponíveis por ordem
         usuariosDisponiveis.sort((a, b) => a.ordem - b.ordem);
 
-        // Encontrar o índice do responsável atual na lista ordenada
         const indiceAtual = todosUsuarios.findIndex(
           (u) => u.id === responsavelAtualId
         );
@@ -1119,20 +1093,16 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
           console.log(
             `Responsável atual (ID ${responsavelAtualId}) não encontrado na lista`
           );
-          // Se o responsável atual não for encontrado, pegar o primeiro disponível
           return resolve(usuariosDisponiveis[0].id);
         }
 
-        // Encontrar o próximo usuário na ordem circular
         let proximoIndice = indiceAtual;
         let proximoUsuario = null;
 
-        // Procurar o próximo usuário disponível na ordem circular
         do {
           proximoIndice = (proximoIndice + 1) % todosUsuarios.length;
           const candidato = todosUsuarios[proximoIndice];
 
-          // Verificar se o candidato está disponível e não é o executor
           if (
             !candidato.em_viagem &&
             (executorId === null || candidato.id !== executorId)
@@ -1141,13 +1111,11 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
             break;
           }
 
-          // Evitar loop infinito se voltarmos ao índice inicial
           if (proximoIndice === indiceAtual) {
             break;
           }
         } while (true);
 
-        // Se não encontrou ninguém na busca circular, pegar o primeiro disponível
         if (!proximoUsuario) {
           proximoUsuario = usuariosDisponiveis[0];
         }
@@ -1161,13 +1129,12 @@ const encontrarProximoResponsavel = (tarefaId, responsavelAtualId) => {
   });
 };
 
-// Registrar execução de tarefa
+// Registra execução da tarefa
 app.post("/tarefas/:id/executar", async (req, res) => {
   const { id } = req.params;
   const { usuario_id, data_execucao, tipo = "manual" } = req.body;
 
   try {
-    // Inicia a transação
     await new Promise((resolve, reject) => {
       db.beginTransaction((err) => {
         if (err) reject(err);
@@ -1175,7 +1142,7 @@ app.post("/tarefas/:id/executar", async (req, res) => {
       });
     });
 
-    // Verifica se a tarefa está pausada e obtém informações
+    // Verifica se a tarefa está pausada
     const tarefaInfo = await new Promise((resolve, reject) => {
       db.query(
         "SELECT esta_pausada, intervalo_dias, responsavel_id FROM tarefas WHERE id = ?",
@@ -1210,7 +1177,6 @@ app.post("/tarefas/:id/executar", async (req, res) => {
     const intervalo_dias = tarefaInfo.intervalo_dias;
     const data_exec = data_execucao || new Date().toISOString().split("T")[0];
 
-    // Encontrar o próximo responsável
     const proximoResponsavelId = await encontrarProximoResponsavel(
       id,
       tarefaInfo.responsavel_id
@@ -1226,7 +1192,7 @@ app.post("/tarefas/:id/executar", async (req, res) => {
       });
     }
 
-    // Buscar o nome do próximo responsável
+    // Busca o nome do próximo responsável
     const proximoResponsavelNome = await new Promise((resolve, reject) => {
       db.query(
         "SELECT name FROM users WHERE id = ?",
@@ -1268,7 +1234,6 @@ app.post("/tarefas/:id/executar", async (req, res) => {
       );
     });
 
-    // Commit da transação
     await new Promise((resolve, reject) => {
       db.commit((err) => {
         if (err) reject(err);
@@ -1287,7 +1252,6 @@ app.post("/tarefas/:id/executar", async (req, res) => {
   } catch (error) {
     console.error("Erro ao processar execução de tarefa:", error);
 
-    // Rollback em caso de erro
     try {
       await new Promise((resolve) => {
         db.rollback(() => resolve());
@@ -1325,7 +1289,6 @@ app.get("/tarefas/:id/historico", (req, res) => {
       });
     }
 
-    // Formatar as datas
     const historico = results.map((execucao) => ({
       ...execucao,
       data_execucao: new Date(execucao.data_execucao)
@@ -1342,7 +1305,7 @@ app.get("/tarefas/:id/historico", (req, res) => {
 
 /* Rotas de Gerenciamento de Pessoas */
 
-// Listar pessoas com suas posições
+// Lista pessoas com suas posições
 app.get("/pessoas/ordem", (req, res) => {
   const sql = `SELECT u.* FROM users u ORDER BY u.ordem ASC`;
 
@@ -1363,7 +1326,6 @@ app.get("/pessoas/ordem", (req, res) => {
   });
 });
 
-// Inicializar ordem das pessoas (para quem ainda não tem posição definida)
 app.post("/pessoas/ordem/inicializar", (req, res) => {
   const sql = `
     INSERT INTO ordem_pessoas (usuario_id, posicao)
@@ -1391,7 +1353,6 @@ app.post("/pessoas/ordem/inicializar", (req, res) => {
   });
 });
 
-// Atualizar posição de uma pessoa
 app.put("/pessoas/ordem/:id", (req, res) => {
   const { id } = req.params;
   const { nova_posicao } = req.body;
@@ -1403,7 +1364,6 @@ app.put("/pessoas/ordem/:id", (req, res) => {
     });
   }
 
-  // Primeiro verifica se a pessoa já tem uma posição
   db.query(
     "SELECT posicao FROM ordem_pessoas WHERE usuario_id = ?",
     [id],
@@ -1418,12 +1378,10 @@ app.put("/pessoas/ordem/:id", (req, res) => {
       }
 
       if (results.length === 0) {
-        // Se não tem posição, insere
         const insertSql =
           "INSERT INTO ordem_pessoas (usuario_id, posicao) VALUES (?, ?)";
         db.query(insertSql, [id, nova_posicao], handleResponse);
       } else {
-        // Se já tem posição, atualiza
         const updateSql =
           "UPDATE ordem_pessoas SET posicao = ? WHERE usuario_id = ?";
         db.query(updateSql, [nova_posicao, id], handleResponse);
@@ -1448,10 +1406,9 @@ app.put("/pessoas/ordem/:id", (req, res) => {
   }
 });
 
-// Mover pessoa para cima ou para baixo na lista
 app.post("/pessoas/ordem/:id/mover", (req, res) => {
   const { id } = req.params;
-  const { direcao } = req.body; // 'cima' ou 'baixo'
+  const { direcao } = req.body; 
 
   if (!["cima", "baixo"].includes(direcao)) {
     return res.status(400).send({
@@ -1460,7 +1417,6 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
     });
   }
 
-  // Primeiro busca a posição atual
   db.query(
     "SELECT posicao FROM ordem_pessoas WHERE usuario_id = ?",
     [id],
@@ -1485,7 +1441,6 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
       const novaPosicao =
         direcao === "cima" ? posicaoAtual - 1 : posicaoAtual + 1;
 
-      // Verifica se existe alguém na nova posição
       db.query(
         "SELECT usuario_id FROM ordem_pessoas WHERE posicao = ?",
         [novaPosicao],
@@ -1579,7 +1534,6 @@ app.post("/pessoas/ordem/:id/mover", (req, res) => {
 // Função para redistribuir as tarefas de um usuário
 const redistribuirTarefasDoUsuario = (usuarioId) => {
   return new Promise((resolve, reject) => {
-    // Buscar todas as tarefas do usuário
     const sqlBuscarTarefas = `
       SELECT id FROM tarefas
       WHERE responsavel_id = ?
@@ -1593,12 +1547,10 @@ const redistribuirTarefasDoUsuario = (usuarioId) => {
       }
 
       if (tarefas.length === 0) {
-        // Nenhuma tarefa para redistribuir
         console.log(`Nenhuma tarefa encontrada para o usuário ${usuarioId}`);
         return resolve();
       }
 
-      // Buscar todos os usuários ordenados por ordem
       const sqlTodosUsuarios = `
         SELECT id, name, ordem, em_viagem
         FROM users
@@ -1616,7 +1568,6 @@ const redistribuirTarefasDoUsuario = (usuarioId) => {
           return resolve();
         }
 
-        // Filtrar apenas usuários disponíveis (não em viagem)
         const usuariosDisponiveis = todosUsuarios.filter(
           (u) => !u.em_viagem && u.id !== usuarioId
         );
@@ -1626,15 +1577,12 @@ const redistribuirTarefasDoUsuario = (usuarioId) => {
           return resolve();
         }
 
-        // Ordenar os usuários disponíveis por ordem
         usuariosDisponiveis.sort((a, b) => a.ordem - b.ordem);
 
-        // Encontrar o índice do usuário atual na lista completa
         const indiceAtual = todosUsuarios.findIndex((u) => u.id === usuarioId);
 
         if (indiceAtual === -1) {
           console.log(`Usuário ${usuarioId} não encontrado na lista`);
-          // Se o usuário não for encontrado, usar o primeiro disponível
           const novoResponsavelId = usuariosDisponiveis[0].id;
           redistribuirParaNovoResponsavel(
             tarefas,
@@ -1645,28 +1593,23 @@ const redistribuirTarefasDoUsuario = (usuarioId) => {
           return;
         }
 
-        // Encontrar o próximo usuário na ordem circular
         let proximoIndice = indiceAtual;
         let proximoUsuario = null;
 
-        // Procurar o próximo usuário disponível na ordem circular
         do {
           proximoIndice = (proximoIndice + 1) % todosUsuarios.length;
           const candidato = todosUsuarios[proximoIndice];
 
-          // Verificar se o candidato está disponível e não é o usuário atual
           if (!candidato.em_viagem && candidato.id !== usuarioId) {
             proximoUsuario = candidato;
             break;
           }
 
-          // Evitar loop infinito se voltarmos ao índice inicial
           if (proximoIndice === indiceAtual) {
             break;
           }
         } while (true);
 
-        // Se não encontrou ninguém na busca circular, pegar o primeiro disponível
         if (!proximoUsuario && usuariosDisponiveis.length > 0) {
           proximoUsuario = usuariosDisponiveis[0];
         }
@@ -1690,14 +1633,12 @@ const redistribuirTarefasDoUsuario = (usuarioId) => {
   });
 };
 
-// Função auxiliar para atualizar as tarefas para o novo responsável
 const redistribuirParaNovoResponsavel = (
   tarefas,
   novoResponsavelId,
   resolve,
   reject
 ) => {
-  // Atualizar todas as tarefas para o novo responsável
   const atualizacoes = tarefas.map((tarefa) => {
     return new Promise((resolveUpdate, rejectUpdate) => {
       db.query(
@@ -1726,7 +1667,7 @@ const redistribuirParaNovoResponsavel = (
     });
 };
 
-// Registrar início de viagem
+// Registra o início de viagem
 app.post("/viagens/iniciar", async (req, res) => {
   const { usuario_id, data_saida } = req.body;
 
@@ -1737,7 +1678,6 @@ app.post("/viagens/iniciar", async (req, res) => {
     });
   }
 
-  // Verifica se o usuário já está em viagem
   try {
     const results = await new Promise((resolve, reject) => {
       db.query(
@@ -1764,7 +1704,6 @@ app.post("/viagens/iniciar", async (req, res) => {
       });
     }
 
-    // Inicia a transação
     db.beginTransaction(async (err) => {
       if (err) {
         console.error("Erro na transação:", err);
@@ -1776,7 +1715,6 @@ app.post("/viagens/iniciar", async (req, res) => {
       }
 
       try {
-        // Primeiro registra a viagem
         const result = await new Promise((resolve, reject) => {
           db.query(
             "INSERT INTO viagens (usuario_id, data_saida) VALUES (?, ?)",
@@ -1788,7 +1726,6 @@ app.post("/viagens/iniciar", async (req, res) => {
           );
         });
 
-        // Depois atualiza o status do usuário
         await new Promise((resolve, reject) => {
           db.query(
             "UPDATE users SET em_viagem = TRUE WHERE id = ?",
@@ -1800,10 +1737,9 @@ app.post("/viagens/iniciar", async (req, res) => {
           );
         });
 
-        // Redistribuir as tarefas do usuário
+        // Redistribui as tarefas do usuário
         await redistribuirTarefasDoUsuario(usuario_id);
 
-        // Commit da transação
         await new Promise((resolve, reject) => {
           db.commit((err) => {
             if (err) reject(err);
@@ -1837,7 +1773,7 @@ app.post("/viagens/iniciar", async (req, res) => {
   }
 });
 
-// Registrar retorno de viagem
+// Registra o retorno da viagem
 app.post("/viagens/:id/retorno", (req, res) => {
   const { id } = req.params;
   const { data_retorno } = req.body;
@@ -1856,7 +1792,6 @@ app.post("/viagens/:id/retorno", (req, res) => {
     });
   }
 
-  // Primeiro verificar se a viagem existe e não tem data de retorno
   console.log("Verificando viagem:", id);
   db.query(
     "SELECT id, usuario_id, data_saida, data_retorno FROM viagens WHERE id = ?",
@@ -1883,7 +1818,6 @@ app.post("/viagens/:id/retorno", (req, res) => {
 
       const viagem = results[0];
 
-      // Verificar se a viagem já tem data de retorno
       if (viagem.data_retorno) {
         console.log("Viagem já tem data de retorno:", viagem.data_retorno);
         return res.status(400).send({
@@ -1893,7 +1827,6 @@ app.post("/viagens/:id/retorno", (req, res) => {
       }
 
       const { usuario_id, data_saida } = viagem;
-      // Converter as datas para objetos Date
       let dias_fora = 0;
       try {
         const dataSaida = new Date(data_saida);
@@ -1906,7 +1839,6 @@ app.post("/viagens/:id/retorno", (req, res) => {
           data_retorno_obj: dataRetorno,
         });
 
-        // Verificar se as datas são válidas
         if (isNaN(dataSaida.getTime()) || isNaN(dataRetorno.getTime())) {
           console.error("Datas inválidas:", { dataSaida, dataRetorno });
           return res.status(400).send({
@@ -1915,7 +1847,7 @@ app.post("/viagens/:id/retorno", (req, res) => {
           });
         }
 
-        // Calcular a diferença em dias
+        // Calcula a diferença em dias
         const diffTime = Math.abs(dataRetorno - dataSaida);
         dias_fora = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -1944,7 +1876,6 @@ app.post("/viagens/:id/retorno", (req, res) => {
           });
         }
 
-        // Atualiza o registro da viagem
         console.log("Atualizando viagem com:", {
           id,
           data_retorno,
@@ -2004,9 +1935,8 @@ app.post("/viagens/:id/retorno", (req, res) => {
       });
     }
   );
-}); // Registrar retorno de viagem
+}); 
 
-// Buscar viagem atual de um usuário
 app.get("/viagens/atual/:usuario_id", (req, res) => {
   const { usuario_id } = req.params;
 
@@ -2042,7 +1972,7 @@ app.get("/viagens/atual/:usuario_id", (req, res) => {
   });
 });
 
-// Listar viagens de um usuário
+// Lista viagens de um usuário
 app.get("/viagens/usuario/:id", (req, res) => {
   const { id } = req.params;
 
@@ -2078,12 +2008,11 @@ app.get("/viagens/usuario/:id", (req, res) => {
 
 /* Rotas de Tarefas do Usuário */
 
-// Buscar tarefas do usuário
+// Busca tarefas do usuário
 app.get("/tarefas/usuario/:id", async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Verifica se o usuário está em viagem
     const emViagem = await new Promise((resolve, reject) => {
       db.query(
         "SELECT em_viagem FROM users WHERE id = ?",
@@ -2095,7 +2024,6 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
       );
     });
 
-    // Se estiver em viagem, retorna sem tarefas
     if (emViagem) {
       return res.send({
         success: true,
@@ -2105,7 +2033,6 @@ app.get("/tarefas/usuario/:id", async (req, res) => {
       });
     }
 
-    // Busca tarefas para hoje
     const tarefasHoje = await new Promise((resolve, reject) => {
       const sql = `
         SELECT
@@ -2196,7 +2123,6 @@ app.get("/pessoas/ordem", (req, res) => {
 // Função para atualizar responsáveis das tarefas baseado na ordem dos usuários
 const atualizarResponsaveisPorOrdem = async () => {
   return new Promise((resolve, reject) => {
-    // Primeiro, pega todas as tarefas que precisam de atualização
     const sqlTarefas = `
       SELECT t.id, t.nome
       FROM tarefas t
@@ -2214,7 +2140,6 @@ const atualizarResponsaveisPorOrdem = async () => {
         return resolve();
       }
 
-      // Busca usuários disponíveis ordenados
       const sqlUsuarios = `
         SELECT id
         FROM users
@@ -2232,7 +2157,6 @@ const atualizarResponsaveisPorOrdem = async () => {
           return resolve();
         }
 
-        // Distribui as tarefas entre os usuários de forma circular
         const atualizacoes = tarefas.map((tarefa, index) => {
           const usuarioIndex = index % usuarios.length;
           const usuarioId = usuarios[usuarioIndex].id;
@@ -2268,7 +2192,6 @@ app.post("/pessoas/reordenar", (req, res) => {
     return;
   }
 
-  // Inicia uma transação para garantir consistência
   db.beginTransaction(async (err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
@@ -2299,7 +2222,6 @@ app.post("/pessoas/reordenar", (req, res) => {
       // Atualiza os responsáveis das tarefas
       await atualizarResponsaveisPorOrdem();
 
-      // Commit da transação
       db.commit((err) => {
         if (err) {
           return db.rollback(() => {
@@ -2396,7 +2318,7 @@ app.delete("/feriados/:id", (req, res) => {
   });
 });
 
-// Remover feriado específico de uma tarefa em uma data específica
+// Remove feriado específico de uma tarefa
 app.delete("/feriados/:tarefa_id/:data", (req, res) => {
   const { tarefa_id, data } = req.params;
 
@@ -2460,11 +2382,9 @@ app.post("/tarefas/lixo/status", (req, res) => {
   });
 });
 
-/* Rota para notificar responsável sobre ajuda */
 app.post("/tarefas/lixo/notificar", (req, res) => {
   const { usuario_id, motivo } = req.body;
 
-  // Verificar se o usuário existe antes de criar a notificação
   if (usuario_id) {
     const checkUserSql = "SELECT id FROM users WHERE id = ?";
     db.query(checkUserSql, [usuario_id], (err, users) => {
@@ -2484,7 +2404,6 @@ app.post("/tarefas/lixo/notificar", (req, res) => {
         });
       }
 
-      // Usuário existe, prosseguir com a criação da notificação
       criarNotificacao();
     });
   } else {
@@ -2501,7 +2420,6 @@ app.post("/tarefas/lixo/notificar", (req, res) => {
         ? "Você quer que outra pessoa te ajude na segunda?"
         : "Quer que outra pessoa tire com você amanhã?";
 
-    // Usar a estrutura correta da tabela notificacoes
     const sql = `
       INSERT INTO notificacoes (mensagem, departamento, remetente_id, remetente_nome)
       VALUES (?, 'Geral', NULL, 'Sistema')
@@ -2527,7 +2445,7 @@ app.post("/tarefas/lixo/notificar", (req, res) => {
   }
 });
 
-// Remover feriados de uma tarefa específica
+// Remove feriados de uma tarefa específica
 app.delete("/feriados/tarefa/:tarefaId", (req, res) => {
   const { tarefaId } = req.params;
 
@@ -2550,7 +2468,7 @@ app.delete("/feriados/tarefa/:tarefaId", (req, res) => {
   });
 });
 
-// Remover execuções de uma tarefa específica
+// Remove execuções de uma tarefa específica
 app.delete("/execucoes/tarefa/:tarefaId", (req, res) => {
   const { tarefaId } = req.params;
 
@@ -2573,9 +2491,8 @@ app.delete("/execucoes/tarefa/:tarefaId", (req, res) => {
   });
 });
 
-// Rotas para controle de gás - versão simplificada
+// Rotas para controle de gás
 app.get("/gas/ultima-troca", (req, res) => {
-  // Usar DATE_FORMAT para garantir que a data seja retornada no formato DD-MM-YYYY
   const sql =
     "SELECT id, DATE_FORMAT(data, '%d-%m-%Y') as data FROM controle_gas ORDER BY data DESC LIMIT 1";
   db.query(sql, (err, result) => {
@@ -2600,7 +2517,6 @@ app.get("/gas/ultima-troca", (req, res) => {
 app.get("/gas/todas-trocas", (req, res) => {
   console.log("Recebida solicitação para buscar todas as trocas de gás");
 
-  // Usar DATE_FORMAT para garantir que a data seja retornada no formato DD-MM-YYYY
   const sql =
     "SELECT id, DATE_FORMAT(data, '%d-%m-%Y') as data FROM controle_gas ORDER BY data DESC";
 
@@ -2644,11 +2560,10 @@ app.post("/gas/registrar", (req, res) => {
   });
 });
 
-// Endpoint super simples para deletar o último registro de gás
+// Endpoint para deletar o último registro de gás
 app.get("/gas/deletar-ultimo", (req, res) => {
   console.log("Recebida solicitação para deletar último registro de gás");
 
-  // Executar a exclusão diretamente
   db.query(
     "DELETE FROM controle_gas ORDER BY data DESC LIMIT 1",
     (err, result) => {
@@ -2680,7 +2595,6 @@ app.delete("/gas/deletar/:id", (req, res) => {
     `Recebida solicitação para deletar registro de gás com ID: ${id}`
   );
 
-  // Verificar se o ID é válido
   if (!id || isNaN(parseInt(id))) {
     return res.status(400).send({
       success: false,
@@ -2688,7 +2602,6 @@ app.delete("/gas/deletar/:id", (req, res) => {
     });
   }
 
-  // Executar a exclusão pelo ID
   db.query("DELETE FROM controle_gas WHERE id = ?", [id], (err, result) => {
     if (err) {
       console.error("Erro ao deletar registro:", err);
@@ -2729,7 +2642,6 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
     });
   }
 
-  // Verifica se o novo responsável existe e não está em viagem
   const sqlVerificaUsuario = `
     SELECT id, em_viagem
     FROM users
@@ -2794,7 +2706,7 @@ app.post("/tarefas/:id/reatribuir", (req, res) => {
 
 /* Endpoints para gerenciar notificações */
 
-// Enviar mensagem para departamento (cria uma notificação)
+// Envia mensagem para departamento
 app.post("/notificacoes", (req, res) => {
   const { mensagem, departamento, remetente_id, remetente_nome } = req.body;
 
@@ -2805,7 +2717,6 @@ app.post("/notificacoes", (req, res) => {
     });
   }
 
-  // Se remetente_id for fornecido, verificar se o usuário existe
   if (remetente_id) {
     const checkUserSql = "SELECT id FROM users WHERE id = ?";
     db.query(checkUserSql, [remetente_id], (err, users) => {
@@ -2825,11 +2736,9 @@ app.post("/notificacoes", (req, res) => {
         });
       }
 
-      // Usuário existe, prosseguir com a criação da notificação
       insertNotification();
     });
   } else {
-    // Sem remetente_id, prosseguir com a criação da notificação
     insertNotification();
   }
 
@@ -2860,7 +2769,7 @@ app.post("/notificacoes", (req, res) => {
   }
 });
 
-// Buscar notificações por departamento
+// Busca notificações por departamento
 app.get("/notificacoes", (req, res) => {
   const { departamento, usuario_id } = req.query;
 
@@ -2871,7 +2780,6 @@ app.get("/notificacoes", (req, res) => {
     });
   }
 
-  // Consulta SQL que busca notificações e verifica se foram lidas pelo usuário específico
   let sql = `
     SELECT n.*,
            CASE WHEN nl.lida IS NULL THEN FALSE ELSE nl.lida END as lida
@@ -2901,7 +2809,7 @@ app.get("/notificacoes", (req, res) => {
   });
 });
 
-// Marcar notificação como lida
+// Marca notificação como lida
 app.put("/notificacoes/:id", (req, res) => {
   const { id } = req.params;
   const { lida, usuario_id } = req.body;
@@ -2913,7 +2821,6 @@ app.put("/notificacoes/:id", (req, res) => {
     });
   }
 
-  // Verificar se a notificação existe
   const checkSql = "SELECT id FROM notificacoes WHERE id = ?";
   db.query(checkSql, [id], (err, results) => {
     if (err) {
@@ -2932,7 +2839,6 @@ app.put("/notificacoes/:id", (req, res) => {
       });
     }
 
-    // Verificar se já existe um registro para esta notificação e usuário
     const checkLidaSql =
       "SELECT * FROM notificacoes_lidas WHERE notificacao_id = ? AND usuario_id = ?";
     db.query(checkLidaSql, [id, usuario_id], (err, results) => {
@@ -2946,7 +2852,6 @@ app.put("/notificacoes/:id", (req, res) => {
       }
 
       if (results.length > 0) {
-        // Já existe um registro, atualizar
         const updateSql =
           "UPDATE notificacoes_lidas SET lida = ? WHERE notificacao_id = ? AND usuario_id = ?";
         db.query(updateSql, [lida, id, usuario_id], (err, result) => {
@@ -2965,7 +2870,6 @@ app.put("/notificacoes/:id", (req, res) => {
           });
         });
       } else {
-        // Não existe registro, inserir novo
         const insertSql =
           "INSERT INTO notificacoes_lidas (notificacao_id, usuario_id, lida) VALUES (?, ?, ?)";
         db.query(insertSql, [id, usuario_id, lida], (err, result) => {
@@ -3017,7 +2921,7 @@ app.delete("/notificacoes/:id", (req, res) => {
   });
 });
 
-// Endpoint para definir o dia de lavanderia de um usuário
+// Endpoint para definir o dia de lavar roupa de um usuário
 app.post("/dia-lavanderia", (req, res) => {
   const { name, dia_lavanderia } = req.body;
   console.log("Recebida solicitação para definir dia de lavanderia:", {
@@ -3057,7 +2961,7 @@ app.post("/dia-lavanderia", (req, res) => {
   });
 });
 
-// Endpoint para buscar o dia de lavanderia de um usuário
+// Endpoint para buscar o dia de lavar roupa de um usuário
 app.get("/dia-lavanderia/:name", (req, res) => {
   const { name } = req.params;
 
@@ -3093,7 +2997,7 @@ app.get("/dia-lavanderia/:name", (req, res) => {
   });
 });
 
-// Endpoint para buscar todos os usuários com seus dias de lavanderia
+// Endpoint para buscar todos os usuários com seus dias de lavar roupa
 app.get("/dias-lavanderia", (req, res) => {
   console.log("Recebida solicitação para buscar todos os dias de lavanderia");
 
@@ -3122,6 +3026,7 @@ app.get("/dias-lavanderia", (req, res) => {
 });
 
 // Endpoints para o gerenciamento do caixa
+
 // Obter saldo do caixa
 app.get("/caixa/saldo", (req, res) => {
   const sql = "SELECT saldo_total FROM caixa_saldo WHERE id = 1";
@@ -3134,7 +3039,6 @@ app.get("/caixa/saldo", (req, res) => {
     }
 
     if (results.length === 0) {
-      // Se não houver registro, criar um com valores zerados
       const insertSql =
         "INSERT INTO caixa_saldo (id, saldo_total) VALUES (1, 0)";
       db.query(insertSql, (insertErr) => {
@@ -3159,7 +3063,6 @@ app.get("/caixa/saldo", (req, res) => {
 
 // Obter totais mensais
 app.get("/caixa/totais", (req, res) => {
-  // Usando CASE para ordenar os meses em vez de FIELD, que pode não ser suportado em todas as versões do MySQL
   const sql = `
     SELECT mes, ano, total_entradas, total_saidas, saldo_mes
     FROM caixa_totais
@@ -3231,14 +3134,12 @@ app.post("/caixa/transacoes", (req, res) => {
   const { tipo, mes, ano, valor, descricao } = req.body;
   const userId = req.body.userId || null;
 
-  // Validar campos obrigatórios
   if (!tipo || !mes || !ano || !valor || !descricao) {
     return res
       .status(400)
       .json({ success: false, message: "Todos os campos são obrigatórios" });
   }
 
-  // Iniciar transação no banco de dados
   db.beginTransaction(async (err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
@@ -3248,7 +3149,6 @@ app.post("/caixa/transacoes", (req, res) => {
     }
 
     try {
-      // 1. Inserir a transação
       const insertTransacao = new Promise((resolve, reject) => {
         const sql =
           "INSERT INTO caixa_transacoes (tipo, mes, ano, valor, descricao, usuario_id) VALUES (?, ?, ?, ?, ?, ?)";
@@ -3264,9 +3164,7 @@ app.post("/caixa/transacoes", (req, res) => {
 
       await insertTransacao;
 
-      // 2. Atualizar ou criar o total mensal
       const updateTotalMensal = new Promise((resolve, reject) => {
-        // Verificar se já existe um registro para este mês/ano
         const checkSql = "SELECT * FROM caixa_totais WHERE mes = ? AND ano = ?";
         db.query(checkSql, [mes, ano], (err, results) => {
           if (err) {
@@ -3275,7 +3173,7 @@ app.post("/caixa/transacoes", (req, res) => {
           }
 
           if (results.length > 0) {
-            // Atualizar registro existente
+
             let updateSql;
             let updateParams;
 
@@ -3294,7 +3192,7 @@ app.post("/caixa/transacoes", (req, res) => {
               else resolve(result);
             });
           } else {
-            // Criar novo registro
+
             let total_entradas = 0;
             let total_saidas = 0;
             let saldo_mes = 0;
@@ -3323,7 +3221,7 @@ app.post("/caixa/transacoes", (req, res) => {
 
       await updateTotalMensal;
 
-      // 3. Atualizar o saldo total do caixa
+      // Atualiza o saldo total do caixa
       const updateSaldoCaixa = new Promise((resolve, reject) => {
         let updateSql;
         let updateParams;
@@ -3346,7 +3244,6 @@ app.post("/caixa/transacoes", (req, res) => {
 
       await updateSaldoCaixa;
 
-      // Commit da transação
       db.commit((err) => {
         if (err) {
           console.error("Erro ao finalizar transação:", err);
@@ -3373,11 +3270,10 @@ app.post("/caixa/transacoes", (req, res) => {
   });
 });
 
-// Excluir transação
+// Exclui transação
 app.delete("/caixa/transacoes/:id", (req, res) => {
   const { id } = req.params;
 
-  // Iniciar transação no banco de dados
   db.beginTransaction(async (err) => {
     if (err) {
       console.error("Erro ao iniciar transação:", err);
@@ -3387,7 +3283,7 @@ app.delete("/caixa/transacoes/:id", (req, res) => {
     }
 
     try {
-      // 1. Obter detalhes da transação
+      // 1. Obtem detalhes da transação
       const getTransacao = new Promise((resolve, reject) => {
         const sql = "SELECT * FROM caixa_transacoes WHERE id = ?";
         db.query(sql, [id], (err, results) => {
@@ -3401,7 +3297,7 @@ app.delete("/caixa/transacoes/:id", (req, res) => {
       const transacao = await getTransacao;
       const { tipo, mes, ano, valor } = transacao;
 
-      // 2. Atualizar o total mensal
+      // 2. Atualiza o total mensal
       const updateTotalMensal = new Promise((resolve, reject) => {
         let updateSql;
         let updateParams;
@@ -3424,18 +3320,16 @@ app.delete("/caixa/transacoes/:id", (req, res) => {
 
       await updateTotalMensal;
 
-      // 3. Atualizar o saldo total do caixa
+      // 3. Atualiza o saldo total do caixa
       const updateSaldoCaixa = new Promise((resolve, reject) => {
         let updateSql;
         let updateParams;
 
         if (tipo === "entrada") {
-          // Se estamos excluindo uma entrada, diminuímos o saldo total
           updateSql =
             "UPDATE caixa_saldo SET saldo_total = saldo_total - ? WHERE id = 1";
           updateParams = [valor];
         } else {
-          // Se estamos excluindo uma saída, aumentamos o saldo total
           updateSql =
             "UPDATE caixa_saldo SET saldo_total = saldo_total + ? WHERE id = 1";
           updateParams = [valor];
@@ -3460,7 +3354,6 @@ app.delete("/caixa/transacoes/:id", (req, res) => {
 
       await deleteTransacao;
 
-      // Commit da transação
       db.commit((err) => {
         if (err) {
           console.error("Erro ao finalizar exclusão:", err);
@@ -3487,11 +3380,11 @@ app.delete("/caixa/transacoes/:id", (req, res) => {
 
 app.listen(3001, "0.0.0.0", () => {
   console.log(
-    "Servidor rodando na porta 3001 e acessível em todas as interfaces de rede"
+    "Servidor rodando na porta 3001"
   );
   console.log("\nEndereços de acesso:");
   console.log(" - Local: http://localhost:3001");
   console.log(
-    " - Rede: http://192.168.1.2:3001 (se este for seu IP na rede)\n"
+    " - Rede: http://192.168.1.2:3001 \n"
   );
 });

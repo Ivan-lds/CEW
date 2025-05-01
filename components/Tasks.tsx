@@ -67,7 +67,6 @@ const Tasks = () => {
     carregarUserId();
   }, []);
 
-  // Atualizar responsáveis das tarefas
   const atualizarResponsaveis = async () => {
     try {
       await axios.post("http://192.168.1.55:3001/tarefas/atualizar-responsaveis");
@@ -78,7 +77,6 @@ const Tasks = () => {
     }
   };
 
-  // Buscar tarefas agendadas
   const buscarTarefas = async () => {
     setCarregando(true);
     try {
@@ -94,7 +92,6 @@ const Tasks = () => {
     }
   };
 
-  // Inicializar tarefas padrão
   const inicializarTarefas = async () => {
     try {
       await axios.post("http://192.168.1.55:3001/tarefas/inicializar");
@@ -105,7 +102,6 @@ const Tasks = () => {
     }
   };
 
-  // Atualizar intervalo de dias
   const atualizarIntervalo = async () => {
     if (!tarefaSelecionada) return;
 
@@ -132,7 +128,6 @@ const Tasks = () => {
     }
   };
 
-  // Alternar status de pausa da tarefa
   const alternarPausa = async (tarefa: Tarefa) => {
     try {
       const response = await axios.put(
@@ -149,7 +144,6 @@ const Tasks = () => {
     }
   };
 
-  // Buscar histórico de execuções
   const buscarHistorico = async (tarefaId: number) => {
     try {
       const response = await axios.get(`http://192.168.1.55:3001/tarefas/${tarefaId}/historico`);
@@ -162,7 +156,6 @@ const Tasks = () => {
     }
   };
 
-  // Registrar execução de tarefa
   const executarTarefa = async (tarefa: Tarefa) => {
     if (!userId) {
       Alert.alert("Erro", "Usuário não identificado. Por favor, faça login novamente.");
@@ -178,7 +171,6 @@ const Tasks = () => {
 
       if (response.data.success) {
         Alert.alert("Sucesso", "Tarefa marcada como concluída!");
-        // Primeiro atualiza os responsáveis e depois busca as tarefas
         await atualizarResponsaveis();
         await buscarTarefas();
       }
@@ -193,7 +185,6 @@ const Tasks = () => {
     }
   };
 
-  // Atualizar tarefas periodicamente
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -206,7 +197,7 @@ const Tasks = () => {
 
     fetchData();
 
-    const interval = setInterval(fetchData, 60000); // Atualiza a cada minuto
+    const interval = setInterval(fetchData, 60000); 
 
     return () => clearInterval(interval);
   }, []);

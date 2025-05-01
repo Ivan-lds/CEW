@@ -26,7 +26,6 @@ import RedefinirSenha from "./components/RedefinirSenha";
 import OrdemPessoas from "./components/OrdemPessoas";
 import { ThemeProvider, ThemeContext } from "./ThemeContext";
 
-// Componente SplashScreen
 const SplashScreen = () => {
   const { theme } = useContext(ThemeContext);
   return (
@@ -45,16 +44,13 @@ export default function App() {
 
   const handleLogout = async (navigation) => {
     try {
-      // Salvar as credenciais antes de limpar o AsyncStorage
       const savedEmail = await AsyncStorage.getItem("savedEmail");
       const savedPassword = await AsyncStorage.getItem("savedPassword");
       const rememberMe = await AsyncStorage.getItem("rememberMe");
       const isDarkMode = await AsyncStorage.getItem("isDarkMode");
 
-      // Limpar todas as informações do AsyncStorage
       await AsyncStorage.clear();
 
-      // Se o "Lembrar-me" estiver ativado, restaurar as credenciais salvas
       if (rememberMe === "true" && savedEmail && savedPassword) {
         await AsyncStorage.setItem("savedEmail", savedEmail);
         await AsyncStorage.setItem("savedPassword", savedPassword);
@@ -62,7 +58,6 @@ export default function App() {
         console.log("Credenciais preservadas após logout");
       }
 
-      // Preservar a preferência de tema
       if (isDarkMode) {
         await AsyncStorage.setItem("isDarkMode", isDarkMode);
       }
@@ -82,17 +77,14 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Componente AppContent que usa o contexto de tema
   const AppContent = () => {
     const { theme, isDarkMode } = useContext(ThemeContext);
 
-    // Estilo dinâmico para os botões baseado no tema
     const dynamicButtonStyle = {
       backgroundColor: theme.panel,
       borderColor: theme.border,
     };
 
-    // Estilo dinâmico para o texto dos botões
     const dynamicTextStyle = {
       color: theme.text,
     };

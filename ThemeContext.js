@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Definição das cores para os temas
+// Definição das cores dos temas
 export const themes = {
   light: {
     background: '#F5F5F5',
@@ -29,18 +29,15 @@ export const themes = {
   }
 };
 
-// Criação do contexto
 export const ThemeContext = createContext({
   isDarkMode: false,
   theme: themes.light,
   toggleTheme: () => {},
 });
 
-// Provedor do contexto
 export const ThemeProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   
-  // Carregar preferência de tema do AsyncStorage ao iniciar
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
@@ -56,7 +53,6 @@ export const ThemeProvider = ({ children }) => {
     loadThemePreference();
   }, []);
   
-  // Salvar preferência de tema no AsyncStorage quando mudar
   useEffect(() => {
     const saveThemePreference = async () => {
       try {
@@ -69,12 +65,10 @@ export const ThemeProvider = ({ children }) => {
     saveThemePreference();
   }, [isDarkMode]);
   
-  // Função para alternar entre os temas
   const toggleTheme = () => {
     setIsDarkMode(prevMode => !prevMode);
   };
   
-  // Valor do contexto
   const themeContextValue = {
     isDarkMode,
     theme: isDarkMode ? themes.dark : themes.light,

@@ -9,6 +9,8 @@ const RedefinirSenha = ({ navigation }: { navigation: any }) => {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Estados para exibição de senha
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -22,7 +24,6 @@ const RedefinirSenha = ({ navigation }: { navigation: any }) => {
       return;
     }
 
-    // Enviar dados ao backend
     axios
       .post("http://192.168.1.55:3001/redefinir-senha", {
         email,

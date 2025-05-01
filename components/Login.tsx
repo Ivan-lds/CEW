@@ -25,41 +25,34 @@ const Login = ({ navigation }: { navigation: any }) => {
   const [showConnectionStatus, setShowConnectionStatus] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Função para mostrar o indicador de status por 1 segundo
   const showStatusIndicator = () => {
-    // Mostrar o indicador
     setShowConnectionStatus(true);
 
-    // Esconder o indicador após 1 segundo
     setTimeout(() => {
       setShowConnectionStatus(false);
     }, 1200);
   };
 
-  // Mostra o indicador de status quando o componente é montado
   useEffect(() => {
-    // Simula um status de conexão bem-sucedido
     setConnectionError(false);
     showStatusIndicator();
 
-    // Limpa o estado quando o componente é desmontado
     return () => {
       setConnectionError(false);
       setShowConnectionStatus(false);
     };
   }, []);
 
-  // Carrega as credenciais salvas quando o componente é montado
   useEffect(() => {
     const carregarCredenciaisSalvas = async () => {
       try {
-        // Verifica se existem credenciais salvas
+        // Verifica se existem informações de login salvas
         const savedEmail = await AsyncStorage.getItem("savedEmail");
         const savedPassword = await AsyncStorage.getItem("savedPassword");
         const savedRememberMe = await AsyncStorage.getItem("rememberMe");
 
         if (savedEmail && savedPassword && savedRememberMe === "true") {
-          // Preenche os campos com as credenciais salvas
+          // Preenche os campos com as informações salvas
           setEmail(savedEmail);
           setPassword(savedPassword);
           setRememberMe(true);
@@ -79,7 +72,6 @@ const Login = ({ navigation }: { navigation: any }) => {
       return;
     }
 
-    // Evita múltiplos cliques no botão de login
     if (isLoading) {
       console.log("Login já está em andamento. Aguarde...");
       return;
@@ -87,13 +79,11 @@ const Login = ({ navigation }: { navigation: any }) => {
 
     setIsLoading(true);
 
-    // Limpa o estado de erro de conexão
     setConnectionError(false);
 
     try {
       console.log(`Tentando fazer login no servidor: ${API_URL}/login`);
 
-      // Mostra o indicador de status de conexão
       setConnectionError(false);
       showStatusIndicator();
 
@@ -105,7 +95,6 @@ const Login = ({ navigation }: { navigation: any }) => {
         },
         {
           ...API_CONFIG,
-          // Aumenta o timeout para 20 segundos para o login
           timeout: 20000,
         }
       );
@@ -113,24 +102,21 @@ const Login = ({ navigation }: { navigation: any }) => {
       console.log("Resposta completa do servidor:", response.data);
 
       if (response.data.success) {
-        // Armazenar informações do usuário logado
         await AsyncStorage.setItem("userEmail", email);
         await AsyncStorage.setItem("userName", response.data.user.name);
         await AsyncStorage.setItem(
-          "departamento", // Corrigido para "departamento" em vez de "userDepartment"
+          "departamento", 
           response.data.user.departamento || ""
         );
         await AsyncStorage.setItem("role", response.data.role);
         await AsyncStorage.setItem("userId", response.data.user.id.toString());
 
-        // Salvar credenciais se "Lembrar-me" estiver marcado
         if (rememberMe) {
           await AsyncStorage.setItem("savedEmail", email);
           await AsyncStorage.setItem("savedPassword", password);
           await AsyncStorage.setItem("rememberMe", "true");
           console.log("Credenciais salvas para uso futuro");
         } else {
-          // Se não estiver marcado, remove as credenciais salvas
           await AsyncStorage.removeItem("savedEmail");
           await AsyncStorage.removeItem("savedPassword");
           await AsyncStorage.removeItem("rememberMe");
@@ -149,13 +135,11 @@ const Login = ({ navigation }: { navigation: any }) => {
           response.data.role === "admin" ? "Home" : "Home"
         );
 
-        // Adiciona um pequeno atraso para garantir que os dados foram salvos
         setTimeout(() => {
           console.log(
             "Redirecionando para a Home e atualizando notificações..."
           );
 
-          // Reseta a pilha de navegação e vai para Home
           navigation.reset({
             index: 0,
             routes: [{ name: "Home", params: { refreshNotifications: true } }],
@@ -167,7 +151,6 @@ const Login = ({ navigation }: { navigation: any }) => {
     } catch (error) {
       console.error("Erro ao fazer login:", error);
 
-      // Mensagem de erro mais específica baseada no tipo de erro
       let errorMessage = "Erro ao fazer login. Tente novamente.";
       let isConnectionError = false;
       let title = "Erro de Login";
@@ -180,19 +163,16 @@ const Login = ({ navigation }: { navigation: any }) => {
       } else if (error.message && error.message.includes("Network Error")) {
         title = "Erro de Conexão";
         errorMessage =
-          "Não foi possível conectar ao servidor. Verifique se o servidor está rodando e se você está conectado à internet.";
+          "Não foi possível conectar ao servidor. Verifique se você está conectado à internet.";
         isConnectionError = true;
       } else if (error.response) {
-        // O servidor respondeu com um status de erro
         errorMessage =
           error.response.data?.message ||
           `Erro ${error.response.status}: ${error.response.statusText}`;
       }
 
-      // Define o estado de erro de conexão
       setConnectionError(isConnectionError);
 
-      // Mostra uma mensagem de erro mais amigável
       Alert.alert(
         title,
         errorMessage,
@@ -306,7 +286,7 @@ const Login = ({ navigation }: { navigation: any }) => {
           onPress={() => {
             Alert.alert(
               "Problemas de Conexão",
-              "Verifique se o servidor está rodando e se você está conectado à internet. Você também pode editar o arquivo config.js para alterar o endereço do servidor.",
+              "Verifique se você está conectado à internet.",
               [
                 { text: "OK", style: "cancel" },
                 {

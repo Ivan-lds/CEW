@@ -40,10 +40,9 @@ interface SaldoCaixa {
 }
 
 const Caixa = ({ navigation }: { navigation: any }) => {
-  // Usar o contexto de tema global
   const { theme } = useContext(ThemeContext);
 
-  // Estados para os dados
+  // Estados para os dados do caixa
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [totaisMensais, setTotaisMensais] = useState<TotalMensal[]>([]);
   const [saldoCaixa, setSaldoCaixa] = useState<SaldoCaixa>({
@@ -69,7 +68,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
     descricao: "",
   });
 
-  // Estados para controle de UI
+  // Estados para controle de interface
   const [carregando, setCarregando] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDetalhesVisible, setModalDetalhesVisible] = useState(false);
@@ -102,7 +101,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
   const anoAtual = new Date().getFullYear();
   const anos = Array.from({ length: 6 }, (_, i) => anoAtual - 4 + i);
 
-  // Verificar o departamento do usuário ao montar o componente
+  // Verificar o departamento do usuário
   useEffect(() => {
     const verificarDepartamento = async () => {
       try {
@@ -115,7 +114,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
         setUserDepartamento(departamento);
         setIsAdmin(role === "admin");
 
-        // Mostrar o botão "Nova Transação" apenas para usuários do departamento "Caixa" ou para administradores
+        // Mostra o botão "Nova Transação" apenas para usuários do departamento "Caixa" ou para administradores
         setMostrarBotaoNovaTransacao(
           departamento === "Caixa" || role === "admin"
         );
@@ -128,11 +127,9 @@ const Caixa = ({ navigation }: { navigation: any }) => {
     carregarDados();
   }, []);
 
-  // Função para carregar todos os dados do caixa
   const carregarDados = async () => {
     setCarregando(true);
     try {
-      // Carregar saldo do caixa
       const responseSaldo = await axios.get(
         `${API_URL}/caixa/saldo`,
         API_CONFIG
@@ -141,7 +138,6 @@ const Caixa = ({ navigation }: { navigation: any }) => {
         setSaldoCaixa(responseSaldo.data.saldo);
       }
 
-      // Carregar totais mensais
       const responseTotais = await axios.get(
         `${API_URL}/caixa/totais`,
         API_CONFIG
@@ -150,7 +146,6 @@ const Caixa = ({ navigation }: { navigation: any }) => {
         setTotaisMensais(responseTotais.data.totais);
       }
 
-      // Carregar transações
       const responseTransacoes = await axios.get(
         `${API_URL}/caixa/transacoes`,
         API_CONFIG
@@ -166,9 +161,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para registrar nova transação
   const registrarTransacao = async () => {
-    // Validar campos
     if (
       !novaTransacao.mes ||
       !novaTransacao.valor ||
@@ -178,7 +171,6 @@ const Caixa = ({ navigation }: { navigation: any }) => {
       return;
     }
 
-    // Validar valor
     const valor = parseFloat(novaTransacao.valor.replace(",", "."));
     if (isNaN(valor) || valor <= 0) {
       Alert.alert("Erro", "Por favor, informe um valor válido.");
@@ -191,7 +183,6 @@ const Caixa = ({ navigation }: { navigation: any }) => {
       // Obter ID do usuário logado
       const userId = await AsyncStorage.getItem("userId");
 
-      // Enviar transação para o servidor
       const response = await axios.post(
         `${API_URL}/caixa/transacoes`,
         {
@@ -205,7 +196,6 @@ const Caixa = ({ navigation }: { navigation: any }) => {
       if (response.data.success) {
         Alert.alert("Sucesso", "Transação registrada com sucesso!");
 
-        // Limpar formulário
         setNovaTransacao({
           tipo: "entrada",
           mes: "",
@@ -214,7 +204,6 @@ const Caixa = ({ navigation }: { navigation: any }) => {
           descricao: "",
         });
 
-        // Fechar modal e recarregar dados
         setModalVisible(false);
         await carregarDados();
       } else {
@@ -231,13 +220,12 @@ const Caixa = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para abrir modal de detalhes
   const abrirDetalhes = (
     tipo: "entrada" | "saida",
     mes: string,
     ano: number
   ) => {
-    // Filtrar transações pelo mês, ano e tipo
+
     const filtradas = transacoes.filter(
       (t) => t.mes === mes && t.ano === ano && t.tipo === tipo
     );
@@ -249,12 +237,10 @@ const Caixa = ({ navigation }: { navigation: any }) => {
     setModalDetalhesVisible(true);
   };
 
-  // Função para formatar valor em reais
   const formatarValor = (valor: number): string => {
     return `R$ ${valor.toFixed(2).replace(".", ",")}`;
   };
 
-  // Renderizar o componente
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -295,7 +281,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
             </View>
           </View>
 
-          {/* Botão para adicionar nova transação - visível apenas para usuários do departamento Caixa ou administradores */}
+          {/* Botão para adicionar nova transação*/}
           {mostrarBotaoNovaTransacao && (
             <TouchableOpacity
               style={[
@@ -576,7 +562,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                   <TouchableOpacity
                     style={[
                       styles.button,
-                      { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
+                      { backgroundColor: "#dc3545" }, 
                     ]}
                     onPress={() => setModalVisible(false)}
                   >
@@ -685,7 +671,7 @@ const Caixa = ({ navigation }: { navigation: any }) => {
                   <TouchableOpacity
                     style={[
                       styles.button,
-                      { backgroundColor: "#007bff", flex: 1 }, // Cor vermelha fixa para o botão de fechar
+                      { backgroundColor: "#007bff", flex: 1 },
                     ]}
                     onPress={() => setModalDetalhesVisible(false)}
                   >
@@ -861,7 +847,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: "#dc3545", // Cor vermelha para o botão de cancelar
+    backgroundColor: "#dc3545", 
   },
   saveButton: {
     backgroundColor: "#28a745",

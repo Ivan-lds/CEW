@@ -20,7 +20,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { API_URL, API_CONFIG } from "../config";
 import * as DocumentPicker from "expo-document-picker";
-// Importar bibliotecas para visualização de documentos
+
+// Importações para visualização dos documentos
 import * as FileSystem from "expo-file-system";
 import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
@@ -28,20 +29,24 @@ import Calculadora from "./Calculadora";
 import { ThemeContext } from "../ThemeContext";
 
 const Configs = ({ navigation }: { navigation: any }) => {
-  // Usar o contexto de tema global
   const { isDarkMode, toggleTheme, theme } = useContext(ThemeContext);
 
+  // Estado para dados pessoais
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [userData, setUserData] = useState({
     name: "",
     email: "",
     departamento: "",
   });
+
+  // Estado para documentos
   const [isDocumentosModalVisible, setIsDocumentosModalVisible] =
     useState(false);
   const [documentos, setDocumentos] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Estado para exibição da calculadora
   const [isCalculadoraVisible, setIsCalculadoraVisible] = useState(false);
   const [isCalculadoraModalVisible, setIsCalculadoraModalVisible] =
     useState(false);
@@ -53,7 +58,7 @@ const Configs = ({ navigation }: { navigation: any }) => {
       const department = await AsyncStorage.getItem("userDepartment");
       const departamento = await AsyncStorage.getItem("departamento");
 
-      // Verificar se o usuário é do departamento "Caixa"
+      // Verifica se o usuário é do departamento "Caixa"
       if (departamento === "Caixa") {
         setIsCalculadoraVisible(true);
       }
@@ -92,7 +97,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para alternar o tema usando o contexto global
   const handleToggleTheme = () => {
     toggleTheme();
     Alert.alert(
@@ -101,24 +105,20 @@ const Configs = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  // Carregar documentos quando o componente montar
   useEffect(() => {
     carregarDocumentos();
   }, []);
 
-  // Recarregar documentos quando abrir o modal
   useEffect(() => {
     if (isDocumentosModalVisible) {
       carregarDocumentos();
     }
   }, [isDocumentosModalVisible]);
 
-  // Função para selecionar documentos
   const selecionarDocumentos = async () => {
     if (Platform.OS === "web") {
       Alert.alert(
         "Funcionalidade limitada",
-        "O upload de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
       );
       return;
     }
@@ -147,12 +147,10 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para fazer upload de documentos
   const uploadDocumentos = async (arquivos) => {
     if (Platform.OS === "web") {
       Alert.alert(
         "Funcionalidade limitada",
-        "O upload de documentos só está disponível em dispositivos móveis."
       );
       return;
     }
@@ -174,21 +172,19 @@ const Configs = ({ navigation }: { navigation: any }) => {
         nome: arquivo.name,
         tipo: arquivo.mimeType,
         tamanho: arquivo.size,
-        uri: arquivo.uri, // Usar uri em vez de caminho
-        caminho: arquivo.uri, // Manter caminho para compatibilidade
+        uri: arquivo.uri, 
+        caminho: arquivo.uri, 
         dataUpload: new Date().toISOString(),
       }));
 
       const todosDocumentos = [...documentos, ...novosDocumentos];
       setDocumentos(todosDocumentos);
 
-      // Salvar na chave do usuário
       await AsyncStorage.setItem(
         `documentos_${userId}`,
         JSON.stringify(todosDocumentos)
       );
 
-      // Também salvar na chave global
       await AsyncStorage.setItem(
         "todos_documentos",
         JSON.stringify(todosDocumentos)
@@ -203,10 +199,8 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para carregar documentos
   const carregarDocumentos = async () => {
     try {
-      // Primeiro, tentar carregar da chave global
       const todosDocumentosString = await AsyncStorage.getItem(
         "todos_documentos"
       );
@@ -216,7 +210,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
         return;
       }
 
-      // Se não encontrar na chave global, tentar carregar da chave do usuário
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) return;
 
@@ -227,7 +220,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
         const docs = JSON.parse(documentosString);
         setDocumentos(docs);
 
-        // Atualizar também a chave global
         await AsyncStorage.setItem("todos_documentos", JSON.stringify(docs));
       }
     } catch (error) {
@@ -235,34 +227,28 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para excluir documento - versão simplificada
   const excluirDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
       Alert.alert(
         "Funcionalidade limitada",
-        "A exclusão de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
       );
       return;
     }
 
     try {
-      // Atualizar lista de documentos
       const novosDocumentos = documentos.filter(
         (doc) => doc.id !== documento.id
       );
       setDocumentos(novosDocumentos);
 
-      // Atualizar AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
       if (userId) {
-        // Salvar na chave do usuário
+
         await AsyncStorage.setItem(
           `documentos_${userId}`,
           JSON.stringify(novosDocumentos)
         );
 
-        // Também atualizar a chave global
         await AsyncStorage.setItem(
           "todos_documentos",
           JSON.stringify(novosDocumentos)
@@ -276,33 +262,26 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para abrir documento com suporte a diferentes tipos de arquivos
   const abrirDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
       Alert.alert(
         "Funcionalidade limitada",
-        "A visualização de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
       );
       return;
     }
 
     try {
-      // Verificar se o documento tem uma URI ou caminho
       const documentoUri = documento.uri || documento.caminho;
       if (!documentoUri) {
         Alert.alert("Erro", "O documento não possui uma URI válida.");
         return;
       }
 
-      // Usar a URI encontrada
       documento.uri = documentoUri;
 
-      // Mostrar informações do documento
       console.log("Abrindo documento:", documento);
 
       if (Platform.OS === "android") {
-        // Em Android, podemos usar o IntentLauncher
         try {
           const contentUri = await FileSystem.getContentUriAsync(documento.uri);
           await IntentLauncher.startActivityAsync(
@@ -321,7 +300,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
           );
         }
       } else if (Platform.OS === "ios") {
-        // Em iOS, podemos usar o Sharing para abrir
         try {
           await Sharing.shareAsync(documento.uri, {
             UTI: getUTIForFileType(documento.tipo),
@@ -336,7 +314,6 @@ const Configs = ({ navigation }: { navigation: any }) => {
           );
         }
       } else {
-        // Fallback para outros casos
         Alert.alert(
           "Informação",
           `Documento: ${documento.nome}\nTipo: ${documento.tipo}\nTamanho: ${documento.tamanho} bytes\n\nNão foi possível abrir o documento automaticamente.`
@@ -348,33 +325,26 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para compartilhar documento
   const compartilharDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
       Alert.alert(
         "Funcionalidade limitada",
-        "O compartilhamento de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
       );
       return;
     }
 
     try {
-      // Verificar se o documento tem uma URI ou caminho
       const documentoUri = documento.uri || documento.caminho;
       if (!documentoUri) {
         Alert.alert("Erro", "O documento não possui uma URI válida.");
         return;
       }
 
-      // Usar a URI encontrada
       documento.uri = documentoUri;
 
-      // Verificar se o compartilhamento está disponível
       const isAvailable = await Sharing.isAvailableAsync();
 
       if (isAvailable) {
-        // Usar o sistema de compartilhamento
         await Sharing.shareAsync(documento.uri, {
           UTI: getUTIForFileType(documento.tipo),
           mimeType: documento.tipo || "application/octet-stream",
@@ -392,47 +362,35 @@ const Configs = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para baixar documento
   const baixarDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
       Alert.alert(
         "Funcionalidade limitada",
-        "O download de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
       );
       return;
     }
 
     try {
-      // Verificar se o documento tem uma URI ou caminho
       const documentoUri = documento.uri || documento.caminho;
       if (!documentoUri) {
         Alert.alert("Erro", "O documento não possui uma URI válida.");
         return;
       }
 
-      // Usar a URI encontrada
       documento.uri = documentoUri;
 
-      // No caso de dispositivos móveis, o documento já está no dispositivo
-      // Podemos apenas mostrar onde ele está armazenado
       Alert.alert(
         "Informação",
         `O documento já está armazenado no seu dispositivo.\n\nNome: ${documento.nome}\nLocalização: ${documento.uri}`
       );
 
-      // Alternativamente, podemos copiar o arquivo para a pasta de Downloads
-      // Isso requer permissões adicionais e varia entre plataformas
-      // Por simplicidade, apenas informamos que o arquivo já está no dispositivo
     } catch (error) {
       console.error("Erro ao baixar documento:", error);
       Alert.alert("Erro", "Não foi possível baixar o documento.");
     }
   };
 
-  // Função auxiliar para obter o UTI (Uniform Type Identifier) para iOS
   const getUTIForFileType = (mimeType) => {
-    // Mapeamento de tipos MIME para UTIs do iOS
     const mimeToUTI = {
       "application/pdf": "com.adobe.pdf",
       "application/msword": "com.microsoft.word.doc",
@@ -547,7 +505,7 @@ const Configs = ({ navigation }: { navigation: any }) => {
               <TouchableOpacity
                 style={[
                   styles.actionButton,
-                  { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de fechar
+                  { backgroundColor: "#dc3545" }, 
                 ]}
                 onPress={() => setIsModalVisible(false)}
               >
@@ -776,7 +734,7 @@ const Configs = ({ navigation }: { navigation: any }) => {
               style={[
                 styles.button,
                 {
-                  backgroundColor: "#dc3545", // Cor vermelha fixa para o botão de fechar
+                  backgroundColor: "#dc3545", 
                   marginTop: 15,
                 },
               ]}
@@ -799,14 +757,13 @@ const Configs = ({ navigation }: { navigation: any }) => {
           style={{ flex: 1, backgroundColor: theme.background, padding: 16 }}
         >
       
-          {/* Renderizar o componente Calculadora diretamente */}
           <Calculadora />
 
           <TouchableOpacity
             style={[
               styles.button,
               {
-                backgroundColor: "#dc3545", // Cor vermelha fixa para o botão de fechar
+                backgroundColor: "#dc3545", 
                 marginTop: 15,
                 margin: 'auto',
                 width: 270,

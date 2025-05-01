@@ -94,11 +94,8 @@
 │   ├── server.js         # Código do servidor backend
 │   └── package.json      # Dependências do backend
 ├── frontend/
-│   ├── src/
 │   │   ├── components/   # Componentes React Native
-│   │   └── screens/      # Telas do aplicativo
 │   └── App.js            # Arquivo principal do frontend
-├── database.sql          # Esquema do banco de dados
 └── README.md             # Este arquivo
 ```
 

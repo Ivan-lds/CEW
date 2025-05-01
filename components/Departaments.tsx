@@ -15,7 +15,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemeContext } from "../ThemeContext";
 
 const Departaments = () => {
-  // Usar o contexto de tema global
   const { theme } = useContext(ThemeContext);
 
   const [selectedDepartment, setSelectedDepartment] = useState("");
@@ -24,7 +23,6 @@ const Departaments = () => {
   const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Carregar dados do usuário ao montar o componente
   useEffect(() => {
     const carregarDadosUsuario = async () => {
       try {
@@ -63,7 +61,6 @@ const Departaments = () => {
         remetente_nome: userName,
       });
 
-      // Enviar notificação para o servidor
       const response = await axios.post(
         `${API_URL}/notificacoes`,
         {
@@ -81,7 +78,6 @@ const Departaments = () => {
           `Mensagem enviada com sucesso para o departamento ${selectedDepartment}!`
         );
 
-        // Limpar campos após envio
         setMessage("");
         setSelectedDepartment("");
       } else {

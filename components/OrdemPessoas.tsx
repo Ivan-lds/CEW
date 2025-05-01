@@ -23,7 +23,6 @@ const OrdemPessoas = () => {
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [carregando, setCarregando] = useState(false);
 
-  // Buscar lista de pessoas
   const buscarPessoas = async () => {
     setCarregando(true);
     try {
@@ -39,7 +38,6 @@ const OrdemPessoas = () => {
     }
   };
 
-  // Inicializar ordem das pessoas
   const inicializarOrdem = async () => {
     try {
       const response = await axios.post('http://192.168.1.55:3001/pessoas/ordem/inicializar');
@@ -53,7 +51,6 @@ const OrdemPessoas = () => {
     }
   };
 
-  // Mover pessoa para cima ou para baixo
   const moverPessoa = async (id: number, direcao: 'cima' | 'baixo') => {
     try {
       const response = await axios.post(`http://192.168.1.55:3001/pessoas/ordem/${id}/mover`, {

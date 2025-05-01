@@ -43,28 +43,9 @@ interface HistoricoItem {
   tarefas: string[];
 }
 
-// Função para formatar a data no formato dd-mm-yyyy
-const formatarData = (dataString: string | null): string => {
-  if (!dataString) return "";
-
-  try {
-    const data = new Date(dataString);
-    const dia = data.getDate().toString().padStart(2, "0");
-    const mes = (data.getMonth() + 1).toString().padStart(2, "0");
-    const ano = data.getFullYear();
-
-    return `${dia}-${mes}-${ano}`;
-  } catch (error) {
-    console.error("Erro ao formatar data:", error);
-    return dataString;
-  }
-};
-
 const Home = ({ route }: { route: any }) => {
-  // Usar o contexto de tema global
   const { theme, isDarkMode } = useContext(ThemeContext);
 
-  // Verificar se há parâmetros de rota para atualizar notificações
   const refreshNotifications = route?.params?.refreshNotifications;
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -77,6 +58,9 @@ const Home = ({ route }: { route: any }) => {
   const [carregando, setCarregando] = useState(true);
   const [tarefaExecutando, setTarefaExecutando] = useState<number | null>(null);
   const [buscandoTarefas, setBuscandoTarefas] = useState(false);
+
+
+  // Estado para aniversários
   const [aniversarios, setAniversarios] = useState<
     {
       id: number;
@@ -85,6 +69,8 @@ const Home = ({ route }: { route: any }) => {
       aniversario_original: string;
     }[]
   >([]);
+
+  // Estado para dias de lavar roupa
   const [diasLavanderia, setDiasLavanderia] = useState<
     {
       id: number;
@@ -92,11 +78,12 @@ const Home = ({ route }: { route: any }) => {
       dia_lavanderia: string;
     }[]
   >([]);
+
+  // Estado para notificações
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificacoesNaoLidas, setNotificacoesNaoLidas] = useState(0);
   const navigation = useNavigation();
 
-  // Função para formatar data no padrão dd-mm-yyyy
   const formatarData = (dataString: string): string => {
     if (!dataString) return "";
 
@@ -113,7 +100,7 @@ const Home = ({ route }: { route: any }) => {
     }
   };
 
-  // Função para formatar data no padrão dd-mm (apenas dia e mês)
+  // Função para formatar data (apenas dia e mês)
   const formatarDataDiaMes = (dataString: string): string => {
     if (!dataString) return "";
 
@@ -131,7 +118,6 @@ const Home = ({ route }: { route: any }) => {
 
   // Função para agrupar usuários por dia da semana
   const agruparUsuariosPorDia = () => {
-    // Ordem dos dias da semana começando por domingo
     const diasDaSemana = [
       "Domingo",
       "Segunda-feira",
@@ -142,15 +128,12 @@ const Home = ({ route }: { route: any }) => {
       "Sábado",
     ];
 
-    // Objeto para armazenar os usuários agrupados por dia
     const usuariosPorDia: { [key: string]: string[] } = {};
 
-    // Inicializar todos os dias da semana com arrays vazios
     diasDaSemana.forEach((dia) => {
       usuariosPorDia[dia] = [];
     });
 
-    // Agrupar os usuários por dia
     diasLavanderia.forEach((usuario) => {
       if (
         usuario.dia_lavanderia &&
@@ -166,42 +149,35 @@ const Home = ({ route }: { route: any }) => {
     }));
   };
 
-  // Função para verificar o status do aniversário (hoje, passado ou futuro)
   const verificarStatusAniversario = (
     dataAniversario: string
   ): "hoje" | "passado" | "futuro" => {
     if (!dataAniversario) return "futuro";
 
     try {
-      // Obter a data atual
       const hoje = new Date();
       const diaAtual = hoje.getDate();
-      const mesAtual = hoje.getMonth() + 1; // Janeiro é 0
+      const mesAtual = hoje.getMonth() + 1; 
 
-      // Converter a data do aniversário para um objeto Date
       const data = new Date(dataAniversario);
       const diaAniversario = data.getDate();
-      const mesAniversario = data.getMonth() + 1; // Janeiro é 0
+      const mesAniversario = data.getMonth() + 1; 
 
-      // Verificar se é 1º de janeiro (reinício do ano)
-      // Exceção: se alguém faz aniversário em 1º de janeiro, mantém verde
+      // Verifica se é 1º de janeiro (reiniciar o ano)
       if (diaAtual === 1 && mesAtual === 1) {
         console.log(
           `Verificando aniversário em 1º de janeiro: ${diaAniversario}-${mesAniversario}`
         );
 
-        // Se a pessoa faz aniversário em 1º de janeiro, mantém verde
         if (diaAniversario === 1 && mesAniversario === 1) {
           console.log(`Aniversário em 1º de janeiro - mantendo VERDE`);
           return "hoje";
         }
 
-        // Para todos os outros, reinicia para futuro (azul)
         console.log(`Reiniciando status para AZUL (futuro) no início do ano`);
         return "futuro";
       }
 
-      // Verificar se é hoje (dia atual = dia do aniversário)
       if (diaAtual === diaAniversario && mesAtual === mesAniversario) {
         console.log(
           `Aniversário é HOJE (${diaAniversario}-${mesAniversario}) - VERDE`
@@ -209,7 +185,6 @@ const Home = ({ route }: { route: any }) => {
         return "hoje";
       }
 
-      // Verificar se já passou no ano atual
       if (
         mesAtual > mesAniversario ||
         (mesAtual === mesAniversario && diaAtual > diaAniversario)
@@ -220,39 +195,34 @@ const Home = ({ route }: { route: any }) => {
         return "passado";
       }
 
-      // Se não é hoje e não passou no ano atual, então é futuro
       console.log(
         `Aniversário ainda não chegou (${diaAniversario}-${mesAniversario}) - AZUL`
       );
       return "futuro";
     } catch (error) {
       console.error("Erro ao verificar status do aniversário:", error);
-      return "futuro"; // Em caso de erro, assume futuro
+      return "futuro"; 
     }
   };
 
-  // Função para buscar aniversários
   const buscarAniversarios = async () => {
     try {
       console.log("Buscando aniversários atualizados...");
 
-      // Usar a configuração padrão da API para evitar problemas de CORS
       const response = await axios.get(`${API_URL}/users`, API_CONFIG);
 
       if (response.data) {
-        // Filtrar apenas usuários que têm aniversário cadastrado
         const aniversariosUsuarios = response.data
           .filter((user: any) => user.aniversario)
           .map((user: any) => ({
             id: user.id,
             name: user.name,
-            aniversario: formatarDataDiaMes(user.aniversario), // Usando a nova função para mostrar apenas dia e mês
-            aniversario_original: user.aniversario, // Guardar a data original para comparação
+            aniversario: formatarDataDiaMes(user.aniversario), 
+            aniversario_original: user.aniversario, 
           }));
 
         console.log(`Encontrados ${aniversariosUsuarios.length} aniversários`);
 
-        // Verificar se houve mudança na lista de aniversários
         const aniversariosAnteriores = JSON.stringify(
           aniversarios.map((a: any) => a.id)
         );
@@ -270,16 +240,13 @@ const Home = ({ route }: { route: any }) => {
     }
   };
 
-  // Função para buscar dias de lavanderia
   const buscarDiasLavanderia = async () => {
     try {
       console.log("Buscando dias de lavanderia...");
 
-      // Usar o endpoint /users que já está funcionando
       const response = await axios.get(`${API_URL}/users`, API_CONFIG);
 
       if (response.data) {
-        // Filtrar apenas usuários que têm dia_lavanderia definido
         const usuariosComDia = response.data
           .filter((user: any) => user.dia_lavanderia)
           .map((user: any) => ({
@@ -298,12 +265,9 @@ const Home = ({ route }: { route: any }) => {
     }
   };
 
-  // Variável para controlar se já está buscando notificações
   const [buscandoNotificacoes, setBuscandoNotificacoes] = useState(false);
 
-  // Função para buscar notificações
   const buscarNotificacoes = async () => {
-    // Evita múltiplas chamadas simultâneas
     if (buscandoNotificacoes) {
       console.log("Já está buscando notificações. Aguarde...");
       return;
@@ -319,20 +283,17 @@ const Home = ({ route }: { route: any }) => {
         console.log(`Departamento do usuário: ${userDepartamento}`);
       }
 
-      // Buscar notificações do servidor com o ID do usuário
       const response = await axios.get(
         `${API_URL}/notificacoes?usuario_id=${userId}`,
         API_CONFIG
       );
 
       if (response.data) {
-        // Formatar as notificações
         const notificacoesFormatadas = response.data.map((notif: any) => ({
           ...notif,
           data_envio: formatarData(notif.data_envio),
         }));
 
-        // Adicionar logs para depuração
         console.log("Departamento do usuário:", userDepartamento);
         console.log(
           "Notificações antes da filtragem:",
@@ -343,16 +304,15 @@ const Home = ({ route }: { route: any }) => {
           }))
         );
 
-        // Filtrar notificações para mostrar apenas as do departamento do usuário ou para todos
+        // Filtra as notificações para mostrar apenas para as pessoas do departamento especificado
         const notificacoesFiltradas = notificacoesFormatadas.filter(
           (notif: any) => {
-            // Se a notificação for para "Todos", mostrar para todos os usuários
+            // Se a notificação for para "Todos", mostra para todos os usuários
             if (notif.departamento === "Todos") {
               console.log(`Notificação ${notif.id} é para todos - incluída`);
               return true;
             }
 
-            // Se o usuário tiver um departamento definido, mostrar apenas as notificações para esse departamento
             if (userDepartamento) {
               const match = notif.departamento === userDepartamento;
               console.log(
@@ -365,7 +325,6 @@ const Home = ({ route }: { route: any }) => {
               return match;
             }
 
-            // Se o usuário não tiver departamento, não mostrar notificações específicas de departamento
             console.log(
               `Notificação ${notif.id} excluída porque usuário não tem departamento`
             );
@@ -379,7 +338,6 @@ const Home = ({ route }: { route: any }) => {
 
         setNotifications(notificacoesFiltradas);
 
-        // Contar notificações não lidas
         const naoLidas = notificacoesFiltradas.filter(
           (n: any) => !n.lida
         ).length;
@@ -396,7 +354,6 @@ const Home = ({ route }: { route: any }) => {
     }
   };
 
-  // Função para marcar notificação como lida
   const marcarComoLida = async (id: number) => {
     try {
       if (!userId) {
@@ -413,14 +370,12 @@ const Home = ({ route }: { route: any }) => {
         API_CONFIG
       );
 
-      // Atualizar estado local
       setNotifications((prev) =>
         prev.map((notif) =>
           notif.id === id ? { ...notif, lida: true } : notif
         )
       );
 
-      // Atualizar contador de não lidas
       setNotificacoesNaoLidas((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error("Erro ao marcar notificação como lida:", error);
@@ -431,17 +386,13 @@ const Home = ({ route }: { route: any }) => {
     }
   };
 
-  // Efeito para atualizar os dados quando a tela recebe foco
   useEffect(() => {
-    // Função para atualizar todos os dados
     const atualizarDados = async () => {
       if (userId) {
         console.log("Atualizando dados ao receber foco...");
 
-        // Buscar notificações primeiro para garantir que a bolinha apareça rapidamente
         await buscarNotificacoes();
 
-        // Depois buscar o resto dos dados
         await Promise.all([
           buscarTarefasUsuario(userId),
           buscarAniversarios(),
@@ -450,13 +401,11 @@ const Home = ({ route }: { route: any }) => {
       }
     };
 
-    // Adicionar listener para quando a tela receber foco
     const unsubscribe = navigation.addListener("focus", () => {
       console.log("Home recebeu foco - atualizando dados");
       atualizarDados();
     });
 
-    // Limpar o listener quando o componente for desmontado
     return unsubscribe;
   }, [navigation, userId]);
 
@@ -475,7 +424,6 @@ const Home = ({ route }: { route: any }) => {
           departamento: departamento,
         });
 
-        // Definir o departamento do usuário
         setUserDepartamento(departamento);
 
         if (storedUserId && storedUserName) {
@@ -483,9 +431,9 @@ const Home = ({ route }: { route: any }) => {
           setUserName(storedUserName);
           setIsAdmin(role === "admin");
           await buscarTarefasUsuario(parseInt(storedUserId));
-          await buscarAniversarios(); // Buscar aniversários
-          await buscarDiasLavanderia(); // Buscar dias de lavanderia
-          await buscarNotificacoes(); // Buscar notificações
+          await buscarAniversarios(); 
+          await buscarDiasLavanderia();
+          await buscarNotificacoes(); 
         }
       } catch (error) {
         console.error("Erro ao carregar dados do usuário:", error);
@@ -496,19 +444,19 @@ const Home = ({ route }: { route: any }) => {
 
     carregarDadosUsuario();
 
-    // Atualiza as tarefas, aniversários e dias de lavanderia a cada 10 segundos
+    // Atualiza as tarefas, aniversários e dias de lavar roupa a cada 10 segundos
     const tarefasInterval = setInterval(() => {
       if (userId) {
         buscarTarefasUsuario(userId);
-        buscarAniversarios(); // Também atualiza os aniversários periodicamente
-        buscarDiasLavanderia(); // Também atualiza os dias de lavanderia periodicamente
+        buscarAniversarios(); 
+        buscarDiasLavanderia(); 
       }
     }, 10000);
 
     // Atualiza as notificações a cada 10 segundos
     const notificacoesInterval = setInterval(() => {
       if (userId) {
-        buscarNotificacoes(); // Atualiza as notificações com maior frequência
+        buscarNotificacoes(); 
         console.log("Verificando novas notificações...");
       }
     }, 10000);
@@ -519,12 +467,10 @@ const Home = ({ route }: { route: any }) => {
     };
   }, []);
 
-  // Adicionar um useEffect para debug do estado isAdmin
   useEffect(() => {
     console.log("Estado isAdmin atualizado:", isAdmin);
   }, [isAdmin]);
 
-  // Adicionar um useEffect para atualizar as notificações quando o userId ou userDepartamento mudar
   useEffect(() => {
     if (userId) {
       console.log(
@@ -534,11 +480,8 @@ const Home = ({ route }: { route: any }) => {
     }
   }, [userId, userDepartamento]);
 
-  // Adicionar um useEffect para buscar notificações imediatamente quando o componente for montado
   useEffect(() => {
-    // Esta função será executada apenas uma vez quando o componente for montado
     const buscarNotificacoesImediatas = async () => {
-      // Pequeno atraso para garantir que os dados do usuário já foram carregados
       setTimeout(async () => {
         if (userId) {
           console.log(
@@ -550,15 +493,13 @@ const Home = ({ route }: { route: any }) => {
     };
 
     buscarNotificacoesImediatas();
-  }, []); // Array de dependências vazio significa que será executado apenas uma vez
+  }, []); 
 
-  // Adicionar um useEffect para buscar notificações quando o parâmetro refreshNotifications for true
   useEffect(() => {
     if (refreshNotifications && userId) {
       console.log(
         "Parâmetro refreshNotifications detectado, atualizando notificações..."
       );
-      // Pequeno atraso para garantir que os dados do usuário já foram carregados
       setTimeout(() => {
         buscarNotificacoes();
       }, 1000);
@@ -566,14 +507,12 @@ const Home = ({ route }: { route: any }) => {
   }, [refreshNotifications, userId]);
 
   const buscarTarefasUsuario = async (id: number) => {
-    // Evita múltiplas chamadas simultâneas
     if (buscandoTarefas) {
       console.log("Já está buscando tarefas. Aguarde...");
       return;
     }
 
     try {
-      // Marca que está buscando tarefas
       setBuscandoTarefas(true);
       setCarregando(true);
       console.log(`Buscando tarefas para o usuário ${id}...`);
@@ -590,7 +529,6 @@ const Home = ({ route }: { route: any }) => {
         setTarefasHoje(response.data.tarefas_hoje || []);
         setHistorico(response.data.historico || []);
 
-        // Log do número de tarefas encontradas
         console.log(
           `Número de tarefas encontradas: ${
             response.data.tarefas_hoje?.length || 0
@@ -603,7 +541,6 @@ const Home = ({ route }: { route: any }) => {
     } catch (error) {
       console.error("Erro ao buscar tarefas do usuário:", error);
 
-      // Mensagem de erro mais específica baseada no tipo de erro
       let errorMessage =
         "Não foi possível carregar as tarefas. Verifique sua conexão.";
 
@@ -614,7 +551,6 @@ const Home = ({ route }: { route: any }) => {
         errorMessage =
           "Erro de conexão. Verifique se o servidor está rodando e se você está conectado à internet.";
       } else if (error.response) {
-        // O servidor respondeu com um status de erro
         errorMessage =
           error.response.data?.message ||
           `Erro ${error.response.status}: ${error.response.statusText}`;
@@ -629,27 +565,14 @@ const Home = ({ route }: { route: any }) => {
   };
 
   const toggleModal = () => {
-    // Se estiver abrindo o modal
     if (!isModalVisible) {
       setIsModalVisible(true);
-      // Não marca as notificações como lidas ao abrir o modal
     }
-    // Se estiver fechando o modal
     else {
       setIsModalVisible(false);
-      // Opcional: marcar notificações como lidas ao fechar o modal
-      // Descomente as linhas abaixo se quiser marcar como lidas ao fechar
-      /*
-      notifications.forEach((notif) => {
-        if (!notif.lida) {
-          marcarComoLida(notif.id);
-        }
-      });
-      */
     }
   };
 
-  // Função para obter o ícone do departamento
   const getDepartmentIcon = (departamento: string): string => {
     switch (departamento) {
       case "Todos":
@@ -676,22 +599,18 @@ const Home = ({ route }: { route: any }) => {
   const executarTarefa = async (tarefaId: number) => {
     if (!userId) return;
 
-    // Se já estiver executando qualquer tarefa, não faz nada
     if (tarefaExecutando !== null) {
       console.log(`Já existe uma tarefa em execução. Ignorando clique.`);
       return;
     }
 
-    // Desabilita o botão imediatamente para evitar cliques duplos
     setTarefaExecutando(tarefaId);
 
-    // Cria uma cópia local da tarefa
     const tarefaParaExecutar = tarefasHoje.find((t) => t.id === tarefaId);
 
     try {
       console.log(`Executando tarefa ${tarefaId}...`);
 
-      // Faz a requisição para o servidor
       const response = await axios.post(
         `${API_URL}/tarefas/${tarefaId}/executar`,
         {
@@ -700,18 +619,15 @@ const Home = ({ route }: { route: any }) => {
         },
         {
           ...API_CONFIG,
-          timeout: 30000, // Aumenta o timeout para 30 segundos
+          timeout: 30000, 
         }
       );
 
-      // Se a requisição for bem-sucedida
       if (response.data.success) {
         console.log(`Tarefa ${tarefaId} executada com sucesso!`);
 
-        // Remove a tarefa da lista local após confirmação do servidor
         setTarefasHoje((prev) => prev.filter((t) => t.id !== tarefaId));
 
-        // Mostra um alerta de sucesso com mais informações
         Alert.alert(
           "Tarefa Concluída",
           `A tarefa foi marcada como concluída com sucesso!\n\nPróximo responsável: ${
@@ -724,7 +640,6 @@ const Home = ({ route }: { route: any }) => {
               text: "OK",
               style: "default",
               onPress: () => {
-                // Atualiza a lista de tarefas quando o usuário fechar o alerta
                 if (userId && !buscandoTarefas) {
                   buscarTarefasUsuario(userId);
                 }
@@ -739,7 +654,6 @@ const Home = ({ route }: { route: any }) => {
     } catch (error) {
       console.error("Erro ao executar tarefa:", error);
 
-      // Mensagem de erro mais específica baseada no tipo de erro
       let errorMessage =
         "Não foi possível marcar a tarefa como concluída. Tente novamente.";
 
@@ -750,7 +664,6 @@ const Home = ({ route }: { route: any }) => {
         errorMessage =
           "Erro de conexão. Verifique se o servidor está rodando e se você está conectado à internet.";
       } else if (error.response) {
-        // O servidor respondeu com um status de erro
         errorMessage =
           error.response.data?.message ||
           `Erro ${error.response.status}: ${error.response.statusText}`;
@@ -768,12 +681,10 @@ const Home = ({ route }: { route: any }) => {
         { cancelable: false }
       );
 
-      // Restaura a tarefa na lista local já que a execução falhou
       if (tarefaParaExecutar) {
         setTarefasHoje((prev) => [...prev, tarefaParaExecutar]);
       }
 
-      // Atualiza a lista de tarefas após o erro
       if (userId && !buscandoTarefas) {
         setTimeout(async () => {
           try {
@@ -787,7 +698,6 @@ const Home = ({ route }: { route: any }) => {
         }, 1000);
       }
     } finally {
-      // Limpa o estado de execução antes de buscar as tarefas
       setTarefaExecutando(null);
       console.log(`Finalizando execução da tarefa ${tarefaId}`);
     }
@@ -1067,7 +977,7 @@ const Home = ({ route }: { route: any }) => {
                     <Text
                       style={[
                         styles.aniversarioData,
-                        { color: theme.accent || "#1382AB" }, // Cor padrão para aniversários futuros
+                        { color: theme.accent || "#1382AB" }, 
                         verificarStatusAniversario(
                           aniversario.aniversario_original
                         ) === "hoje" && [
@@ -1269,10 +1179,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 0,
     backgroundColor: "#f8f9fa",
-    height: "100%", // Garante que ocupe toda a altura da tela
+    height: "100%", 
   },
   scrollView: {
-    flex: 1, // Ocupa todo o espaço disponível
+    flex: 1, 
   },
   header: {
     flexDirection: "row",
@@ -1297,8 +1207,8 @@ const styles = StyleSheet.create({
   content: {
     marginTop: 10,
     paddingHorizontal: 15,
-    paddingBottom: 80, // Aumentado para dar espaço ao menu inferior
-    flexGrow: 1, // Permite que o conteúdo cresça conforme necessário
+    paddingBottom: 80, 
+    flexGrow: 1, 
   },
   panel: {
     backgroundColor: "#fff",
@@ -1325,8 +1235,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     padding: 13,
-    borderTopWidth: 1, // Aumentando a espessura da borda
-    borderTopColor: "#007bff", // Cor azul padrão para a borda
+    borderTopWidth: 1,
+    borderTopColor: "#007bff", 
   },
   menuItem: {
     fontSize: 20,
@@ -1479,20 +1389,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     flex: 1,
-    marginRight: 10, // Adiciona um espaço entre o nome e a data
+    marginRight: 10, 
   },
   aniversarioData: {
     fontWeight: "bold",
-    color: "#1382AB", // Azul para aniversários futuros
+    color: "#1382AB", 
     fontSize: 16,
     textAlign: "right",
-    minWidth: 50, // Garante um espaço mínimo para a data
+    minWidth: 50, 
   },
   aniversarioHoje: {
-    color: "#28a745", // Verde para aniversário de hoje
+    color: "#28a745", 
   },
   aniversarioPassado: {
-    color: "#dc3545", // Vermelho para aniversários que já passaram
+    color: "#dc3545", 
   },
   semAniversariosText: {
     fontSize: 16,
@@ -1600,15 +1510,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   usuarioPrimeiro: {
-    backgroundColor: "#1382AB", // Azul (mesmo do aniversário futuro)
+    backgroundColor: "#1382AB", 
     color: "#fff",
   },
   usuarioSegundo: {
-    backgroundColor: "#28a745", // Verde (mesmo do aniversário hoje)
+    backgroundColor: "#28a745", 
     color: "#fff",
   },
   usuarioTerceiro: {
-    backgroundColor: "#dc3545", // Vermelho (mesmo do aniversário passado)
+    backgroundColor: "#dc3545", 
     color: "#fff",
   },
 });

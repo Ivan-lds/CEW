@@ -20,9 +20,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FontAwesome } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { API_URL, API_CONFIG } from "../config";
-// Usando expo-document-picker para consistência com o resto do app
+
+// Importações para visualização dos documentos enviados
 import * as DocumentPicker from "expo-document-picker";
-// Importar bibliotecas para visualização de documentos
 import * as FileSystem from "expo-file-system";
 import * as IntentLauncher from "expo-intent-launcher";
 import * as Sharing from "expo-sharing";
@@ -44,23 +44,31 @@ interface Tarefa {
 }
 
 const Admin = ({ navigation }: { navigation: any }) => {
-  // Usar o contexto de tema global
+
   const { isDarkMode, toggleTheme, theme } = useContext(ThemeContext);
 
   const [taskFrequency, setTaskFrequency] = useState(0);
+
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
+  
   const [birthdayInput, setBirthdayInput] = useState("");
+  
   const [departmentInput, setDepartmentInput] = useState("");
+  
   const [laundryDayInput, setLaundryDayInput] = useState("");
+  
+  // Estado para dados do usuário
   const [userData, setUserData] = useState({
     name: "",
     email: "",
     departamento: "",
     dia_lavanderia: "",
   });
+
+  // Estado para gerenciar tarefas
   const [isGerenciarTarefasVisible, setIsGerenciarTarefasVisible] =
     useState(false);
   const [feriados, setFeriados] = useState([]);
@@ -74,16 +82,24 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [novaTarefaVisible, setNovaTarefaVisible] = useState(false);
   const [novaTarefaNome, setNovaTarefaNome] = useState("");
   const [novaTarefaIntervalo, setNovaTarefaIntervalo] = useState("");
+
+  // Estado para gerenciar pessoas
   const [isGerenciarPessoasVisible, setIsGerenciarPessoasVisible] =
     useState(false);
   const [pessoas, setPessoas] = useState<any[]>([]);
   const [pessoaSelecionada, setPessoaSelecionada] = useState<any>(null);
+
+  // Estado para viagens
   const [diasViagem, setDiasViagem] = useState("");
   const [dataRetorno, setDataRetorno] = useState("");
   const [isRetornoModalVisible, setIsRetornoModalVisible] = useState(false);
   const [viagemAtual, setViagemAtual] = useState<any>(null);
+
+  // Estado para ordenação
   const [pessoasOrdenadas, setPessoasOrdenadas] = useState<any[]>([]);
   const [isOrdenacaoAtiva, setIsOrdenacaoAtiva] = useState(false);
+
+  // Estado para reatribuição de tarefas
   const [isReatribuirModalVisible, setIsReatribuirModalVisible] =
     useState(false);
   const [tarefaParaReatribuir, setTarefaParaReatribuir] =
@@ -92,24 +108,23 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const [novoResponsavelId, setNovoResponsavelId] = useState<number | null>(
     null
   );
+
+  // Estado para documentos
   const [isDocumentosModalVisible, setIsDocumentosModalVisible] =
     useState(false);
   const [documentos, setDocumentos] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Carregar pessoas quando o componente montar
   useEffect(() => {
     buscarPessoas();
     buscarFeriados();
     carregarDocumentos();
   }, []);
 
-  // Sincronizar estados de pessoas
+  // Ordena as pessoas pela coluna 'ordem' antes de atualizar o estado
   useEffect(() => {
-    // Ordenar as pessoas pela coluna 'ordem' antes de atualizar o estado
     const pessoasOrdenadas = [...pessoas].sort((a, b) => {
-      // Se a ordem não estiver definida, usar um valor alto para colocar no final
       const ordemA = a.ordem || 9999;
       const ordemB = b.ordem || 9999;
       return ordemA - ordemB;
@@ -120,7 +135,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
   // Função para buscar usuários do banco de dados
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API_URL}/users`, API_CONFIG); // Ajuste o endpoint conforme necessário
+      const response = await axios.get(`${API_URL}/users`, API_CONFIG);
       setUsers(response.data);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
@@ -154,7 +169,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
     Alert.alert("Sucesso", `Tarefas agora ocorrerão a cada ${frequency} dias.`);
   };
 
-  // Função para alternar o tema usando o contexto global
+  // Função para alternar o tema
   const handleToggleTheme = () => {
     toggleTheme();
     Alert.alert(
@@ -163,7 +178,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
     );
   };
 
-  // Funções para interagir com usuários
+  // Funções para selecionar usuários
   const handleUserOptions = (user) => {
     setSelectedUser(user);
     setIsModalVisible(true);
@@ -216,13 +231,12 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetDepartment = async (department) => {
     try {
-      // Enviar para o servidor
       await axios.post(`${API_URL}/departamentos`, {
         name: selectedUser.name,
         departamento: department,
       });
 
-      // Se o usuário atual for o que está sendo modificado, atualizar o AsyncStorage
+      // Se o usuário logado for o que está sendo modificado, atualiza o AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
       if (userId && selectedUser.id === parseInt(userId)) {
         await AsyncStorage.setItem("departamento", department);
@@ -241,13 +255,12 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   const handleSetLaundryDay = async (day) => {
     try {
-      // Enviar para o servidor
       await axios.post(`${API_URL}/dia-lavanderia`, {
         name: selectedUser.name,
         dia_lavanderia: day,
       });
 
-      // Se o usuário atual for o que está sendo modificado, atualizar o AsyncStorage
+      // Se o usuário logado for o que está sendo modificado, atualiza o AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
       if (userId && selectedUser.id === parseInt(userId)) {
         await AsyncStorage.setItem("diaLavanderia", day);
@@ -296,13 +309,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
   };
 
   const formatDate = (text) => {
-    // Remove todos os caracteres não numéricos
     const numbers = text.replace(/\D/g, "");
 
-    // Limita a 8 dígitos (ddmmyyyy)
     const limited = numbers.slice(0, 8);
 
-    // Formata como dd-mm-yyyy
+    // Autocompleta a data com traços
     let formatted = "";
     if (limited.length > 0) {
       formatted += limited.slice(0, 2);
@@ -322,7 +333,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     setBirthdayInput(formatted);
   };
 
-  // Buscar tarefas
   const buscarFeriados = async () => {
     try {
       const response = await axios.get(`${API_URL}/feriados`, API_CONFIG);
@@ -384,7 +394,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Criar nova tarefa
   const criarTarefa = async () => {
     try {
       console.log("Criando tarefa:", {
@@ -398,7 +407,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
       console.log("Resposta da criação:", response.data);
 
       if (response.data.success) {
-        await buscarTarefas(); // Adicione await aqui
+        await buscarTarefas();
         console.log("Tarefas após busca:", tarefas);
       }
     } catch (error) {
@@ -406,7 +415,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Atualizar intervalo de dias
   const atualizarIntervalo = async () => {
     if (!tarefaSelecionada) return;
 
@@ -433,7 +441,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Deletar tarefa
   const deletarTarefa = async (tarefaId: number) => {
     try {
       await axios.delete(`${API_URL}/tarefas/${tarefaId}`, API_CONFIG);
@@ -444,7 +451,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Alternar status de pausa da tarefa
   const alternarPausa = async (tarefa: Tarefa) => {
     try {
       const response = await axios.put(
@@ -464,11 +470,10 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para buscar pessoas
   const buscarPessoas = async () => {
     try {
       const response = await axios.get(`${API_URL}/users`, API_CONFIG);
-      console.log("Resposta buscarPessoas:", response.data); // Log para debug
+      console.log("Resposta buscarPessoas:", response.data);
       setPessoas(response.data);
     } catch (error) {
       console.error("Erro ao buscar pessoas:", error);
@@ -494,11 +499,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
         novaLista[index],
       ];
     } else {
-      return; // Não pode mover mais
+      return;
     }
 
     setPessoasOrdenadas(novaLista);
-    setPessoas(novaLista); // Atualiza também o estado pessoas
+    setPessoas(novaLista);
 
     try {
       await axios.post(`${API_URL}/pessoas/reordenar`, {
@@ -510,7 +515,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para iniciar viagem
   const iniciarViagem = async (usuarioId: number) => {
     try {
       const response = await axios.post(`${API_URL}/viagens/iniciar`, {
@@ -536,7 +540,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     return `${day}-${month}-${year}`;
   };
 
-  // Função para registrar retorno
   const registrarRetorno = async () => {
     console.log("Iniciando registrarRetorno");
     console.log("pessoaSelecionada:", pessoaSelecionada);
@@ -553,13 +556,12 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
 
     try {
-      // Verificar se a pessoa está realmente em viagem
       if (!pessoaSelecionada.em_viagem) {
         Alert.alert("Erro", "Esta pessoa não está em viagem.");
         return;
       }
 
-      // Verificar viagem_atual_id
+      // Verifica a viagem_atual_id
       let viagemId = pessoaSelecionada.viagem_atual_id;
 
       // Se não tiver viagem_atual_id mas estiver em viagem, buscar a viagem atual
@@ -598,7 +600,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
         return;
       }
 
-      // Validação adicional do formato da data
       if (!/^\d{2}-\d{2}-\d{4}$/.test(dataRetorno)) {
         console.log("Formato de data inválido:", dataRetorno);
         Alert.alert("Erro", "Data inválida. Use o formato DD-MM-YYYY");
@@ -647,7 +648,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Adiciona um useEffect para monitorar mudanças no estado das tarefas
+  // Monitora os estados das tarefas
   useEffect(() => {
     console.log(
       "Estado das tarefas atualizado:",
@@ -706,7 +707,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   }, [isDocumentosModalVisible]);
 
-  // Função para buscar usuários disponíveis
   const buscarUsuariosDisponiveis = async () => {
     try {
       const response = await axios.get(`${API_URL}/users`, API_CONFIG);
@@ -718,7 +718,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para reatribuir tarefa
   const reatribuirTarefa = async () => {
     if (!tarefaParaReatribuir || !novoResponsavelId) {
       Alert.alert("Erro", "Por favor, selecione um novo responsável.");
@@ -747,14 +746,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para selecionar documentos
   const selecionarDocumentos = async () => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Funcionalidade limitada",
-        "O upload de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
-      );
+      Alert.alert("Funcionalidade limitada");
       return;
     }
 
@@ -782,14 +776,9 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para fazer upload de documentos - versão simplificada
   const uploadDocumentos = async (arquivos) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Funcionalidade limitada",
-        "O upload de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
-      );
+      Alert.alert("Funcionalidade limitada");
       return;
     }
 
@@ -797,7 +786,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
       setIsUploading(true);
       setUploadProgress(0);
 
-      // Obter ID do usuário atual
+      // Obter ID do usuário logado
       const userId = await AsyncStorage.getItem("userId");
       const userName = await AsyncStorage.getItem("userName");
 
@@ -807,7 +796,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
         return;
       }
 
-      // Criar novos documentos a partir dos arquivos selecionados
       const novosDocumentos = [];
       for (let i = 0; i < arquivos.length; i++) {
         const arquivo = arquivos[i];
@@ -821,21 +809,20 @@ const Admin = ({ navigation }: { navigation: any }) => {
           dataUpload: new Date().toISOString(),
         });
 
-        // Atualizar progresso
+        // Atualiza progresso
         setUploadProgress(Math.round(((i + 1) / arquivos.length) * 100));
       }
 
-      // Atualizar lista de documentos
+      // Atualiza lista de documentos
       setDocumentos([...documentos, ...novosDocumentos]);
 
-      // Salvar lista de documentos no AsyncStorage com uma chave global
+      // Salva lista de documentos no AsyncStorage
       const todosDocumentos = [...documentos, ...novosDocumentos];
       await AsyncStorage.setItem(
         `documentos_${userId}`,
         JSON.stringify(todosDocumentos)
       );
 
-      // Também salvar em uma chave global para persistência entre sessões
       await AsyncStorage.setItem(
         "todos_documentos",
         JSON.stringify(todosDocumentos)
@@ -850,10 +837,8 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para carregar documentos
   const carregarDocumentos = async () => {
     try {
-      // Primeiro, tentar carregar da chave global
       const todosDocumentosString = await AsyncStorage.getItem(
         "todos_documentos"
       );
@@ -863,7 +848,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
         return;
       }
 
-      // Se não encontrar na chave global, tentar carregar da chave do usuário
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) return;
 
@@ -874,7 +858,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
         const docs = JSON.parse(documentosString);
         setDocumentos(docs);
 
-        // Atualizar também a chave global
         await AsyncStorage.setItem("todos_documentos", JSON.stringify(docs));
       }
     } catch (error) {
@@ -882,25 +865,18 @@ const Admin = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // Função para excluir documento - versão simplificada
   const excluirDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Funcionalidade limitada",
-        "A exclusão de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
-      );
+      Alert.alert("Funcionalidade limitada");
       return;
     }
 
     try {
-      // Atualizar lista de documentos
       const novosDocumentos = documentos.filter(
         (doc) => doc.id !== documento.id
       );
       setDocumentos(novosDocumentos);
 
-      // Atualizar AsyncStorage
       const userId = await AsyncStorage.getItem("userId");
       if (userId) {
         await AsyncStorage.setItem(
@@ -908,7 +884,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
           JSON.stringify(novosDocumentos)
         );
 
-        // Também atualizar a chave global
         await AsyncStorage.setItem(
           "todos_documentos",
           JSON.stringify(novosDocumentos)
@@ -926,25 +901,19 @@ const Admin = ({ navigation }: { navigation: any }) => {
   const abrirDocumento = async (documento) => {
     // Verifica se está rodando na web
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Funcionalidade limitada",
-        "A visualização de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
-      );
+      Alert.alert("Funcionalidade limitada");
       return;
     }
 
     try {
-      // Verificar se o documento tem uma URI
       if (!documento.uri) {
         Alert.alert("Erro", "O documento não possui uma URI válida.");
         return;
       }
 
-      // Mostrar informações do documento
       console.log("Abrindo documento:", documento);
 
       if (Platform.OS === "android") {
-        // Em Android, podemos usar o IntentLauncher
         try {
           const contentUri = await FileSystem.getContentUriAsync(documento.uri);
           await IntentLauncher.startActivityAsync(
@@ -963,7 +932,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
           );
         }
       } else if (Platform.OS === "ios") {
-        // Em iOS, podemos usar o Sharing para abrir
         try {
           await Sharing.shareAsync(documento.uri, {
             UTI: getUTIForFileType(documento.tipo),
@@ -978,7 +946,6 @@ const Admin = ({ navigation }: { navigation: any }) => {
           );
         }
       } else {
-        // Fallback para outros casos
         Alert.alert(
           "Informação",
           `Documento: ${documento.nome}\nTipo: ${documento.tipo}\nTamanho: ${documento.tamanho} bytes\n\nNão foi possível abrir o documento automaticamente.`
@@ -992,27 +959,21 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   // Função para compartilhar documento
   const compartilharDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Funcionalidade limitada",
-        "O compartilhamento de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
-      );
+      Alert.alert("Funcionalidade limitada");
       return;
     }
 
     try {
-      // Verificar se o documento tem uma URI
       if (!documento.uri) {
         Alert.alert("Erro", "O documento não possui uma URI válida.");
         return;
       }
 
-      // Verificar se o compartilhamento está disponível
+      // Verifica se o compartilhamento está disponível
       const isAvailable = await Sharing.isAvailableAsync();
 
       if (isAvailable) {
-        // Usar o sistema de compartilhamento
         await Sharing.shareAsync(documento.uri, {
           UTI: getUTIForFileType(documento.tipo),
           mimeType: documento.tipo || "application/octet-stream",
@@ -1032,41 +993,28 @@ const Admin = ({ navigation }: { navigation: any }) => {
 
   // Função para baixar documento
   const baixarDocumento = async (documento) => {
-    // Verifica se está rodando na web
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Funcionalidade limitada",
-        "O download de documentos só está disponível em dispositivos móveis. Por favor, teste esta funcionalidade no aplicativo móvel."
-      );
+      Alert.alert("Funcionalidade limitada");
       return;
     }
 
     try {
-      // Verificar se o documento tem uma URI
       if (!documento.uri) {
         Alert.alert("Erro", "O documento não possui uma URI válida.");
         return;
       }
 
-      // No caso de dispositivos móveis, o documento já está no dispositivo
-      // Podemos apenas mostrar onde ele está armazenado
       Alert.alert(
         "Informação",
         `O documento já está armazenado no seu dispositivo.\n\nNome: ${documento.nome}\nLocalização: ${documento.uri}`
       );
-
-      // Alternativamente, podemos copiar o arquivo para a pasta de Downloads
-      // Isso requer permissões adicionais e varia entre plataformas
-      // Por simplicidade, apenas informamos que o arquivo já está no dispositivo
     } catch (error) {
       console.error("Erro ao baixar documento:", error);
       Alert.alert("Erro", "Não foi possível baixar o documento.");
     }
   };
 
-  // Função auxiliar para obter o UTI (Uniform Type Identifier) para iOS
   const getUTIForFileType = (mimeType) => {
-    // Mapeamento de tipos MIME para UTIs do iOS
     const mimeToUTI = {
       "application/pdf": "com.adobe.pdf",
       "application/msword": "com.microsoft.word.doc",
@@ -1181,10 +1129,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.actionButton,
-                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de fechar
-                  ]}
+                  style={[styles.actionButton, { backgroundColor: "#dc3545" }]}
                   onPress={() => setIsProfileModalVisible(false)}
                 >
                   <Text style={styles.buttonText}>Fechar</Text>
@@ -1383,7 +1328,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 style={[
                   styles.button,
                   {
-                    backgroundColor: "#dc3545", // Cor vermelha fixa para o botão de fechar
+                    backgroundColor: "#dc3545",
                     marginTop: 15,
                   },
                 ]}
@@ -1632,10 +1577,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.button,
-                    { backgroundColor: "#007bff" }, // Cor azul para o botão de fechar
-                  ]}
+                  style={[styles.button, { backgroundColor: "#007bff" }]}
                   onPress={() => {
                     setIsModalVisible(false);
                     setBirthdayInput("");
@@ -1860,7 +1802,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 style={[
                   styles.button,
                   {
-                    backgroundColor: "#dc3545", // Cor vermelha para o botão de fechar
+                    backgroundColor: "#dc3545",
                     marginTop: 15,
                   },
                 ]}
@@ -1931,10 +1873,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
-                  ]}
+                  style={[styles.modalButton, { backgroundColor: "#dc3545" }]}
                   onPress={() => setNovaTarefaVisible(false)}
                 >
                   <Text style={styles.buttonText}>Cancelar</Text>
@@ -1992,10 +1931,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
-                  ]}
+                  style={[styles.modalButton, { backgroundColor: "#dc3545" }]}
                   onPress={() => setEditarIntervaloVisible(false)}
                 >
                   <Text style={styles.buttonText}>Cancelar</Text>
@@ -2092,7 +2028,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 style={[
                   styles.button,
                   {
-                    backgroundColor: "#007bff", // Cor azul para o botão de fechar
+                    backgroundColor: "#007bff",
                     marginTop: 15,
                   },
                 ]}
@@ -2141,12 +2077,11 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 value={dataRetorno}
                 onChangeText={(text) => {
                   console.log("Input original:", text);
-                  // Aplica máscara de formatação
                   const formatted = text
-                    .replace(/\D/g, "") // Remove não-dígitos
-                    .replace(/^(\d{2})(\d)/, "$1-$2") // Coloca hífen após dia
-                    .replace(/^(\d{2})\-(\d{2})(\d)/, "$1-$2-$3") // Coloca hífen após mês
-                    .substring(0, 10); // Limita a 10 caracteres
+                    .replace(/\D/g, "")
+                    .replace(/^(\d{2})(\d)/, "$1-$2")
+                    .replace(/^(\d{2})\-(\d{2})(\d)/, "$1-$2-$3")
+                    .substring(0, 10);
                   console.log("Input formatado:", formatted);
                   setDataRetorno(formatted);
                 }}
@@ -2163,10 +2098,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
-                  ]}
+                  style={[styles.modalButton, { backgroundColor: "#dc3545" }]}
                   onPress={() => {
                     setIsRetornoModalVisible(false);
                     setDataRetorno("");
@@ -2243,10 +2175,7 @@ const Admin = ({ navigation }: { navigation: any }) => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    { backgroundColor: "#dc3545" }, // Cor vermelha fixa para o botão de cancelar
-                  ]}
+                  style={[styles.modalButton, { backgroundColor: "#dc3545" }]}
                   onPress={() => {
                     setIsReatribuirModalVisible(false);
                     setTarefaParaReatribuir(null);
@@ -2451,7 +2380,6 @@ const styles = StyleSheet.create({
   documentButton: {
     backgroundColor: "#007bff",
   },
-  // Estilos do modal de dados pessoais
   profileModalContainer: {
     flex: 1,
     justifyContent: "center",

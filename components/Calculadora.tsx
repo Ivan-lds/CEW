@@ -16,7 +16,6 @@ import { API_URL, API_CONFIG } from "../config";
 import { ThemeContext } from "../ThemeContext";
 
 const Calculadora = () => {
-  // Usar o contexto de tema
   const { isDarkMode, theme } = useContext(ThemeContext);
 
   // Estados para os campos de entrada
@@ -26,26 +25,20 @@ const Calculadora = () => {
   const [taxa, setTaxa] = useState("");
   const [quantidadePessoas, setQuantidadePessoas] = useState("");
 
-  // Estado para o resultado do cálculo
   const [resultado, setResultado] = useState<number | null>(null);
 
-  // Estado para o total de pessoas cadastradas no app
   const [totalPessoasCadastradas, setTotalPessoasCadastradas] = useState(0);
 
-  // Estado para controlar o carregamento
   const [carregando, setCarregando] = useState(false);
 
-  // Buscar o total de pessoas cadastradas ao montar o componente
   useEffect(() => {
     buscarTotalPessoas();
   }, []);
 
-  // Função para buscar o total de pessoas cadastradas no app
   const buscarTotalPessoas = async () => {
     try {
       setCarregando(true);
 
-      // Primeiro, tentar obter o total de pessoas do AsyncStorage
       const totalPessoasString = await AsyncStorage.getItem("totalPessoas");
       if (totalPessoasString) {
         const totalPessoas = parseInt(totalPessoasString);
@@ -59,7 +52,6 @@ const Calculadora = () => {
         }
       }
 
-      // Se não encontrar no AsyncStorage, buscar da API
       try {
         const response = await axios.get(`${API_URL}/users`, API_CONFIG);
 
@@ -67,7 +59,6 @@ const Calculadora = () => {
           const total = response.data.length;
           setTotalPessoasCadastradas(total);
 
-          // Salvar no AsyncStorage para uso futuro
           await AsyncStorage.setItem("totalPessoas", total.toString());
 
           console.log(`Total de pessoas cadastradas (da API): ${total}`);
@@ -75,25 +66,19 @@ const Calculadora = () => {
       } catch (apiError) {
         console.error("Erro ao buscar total de pessoas da API:", apiError);
 
-        // Se falhar, definir um valor padrão
-        setTotalPessoasCadastradas(4); // Valor padrão
-        console.log("Usando valor padrão para total de pessoas: 4");
+        setTotalPessoasCadastradas(16); 
+        console.log("Usando valor padrão para total de pessoas: 16");
       }
     } catch (error) {
       console.error("Erro ao buscar total de pessoas:", error);
 
-      // Se falhar completamente, definir um valor padrão
-      setTotalPessoasCadastradas(4); // Valor padrão
-      console.log("Usando valor padrão para total de pessoas: 4");
     } finally {
       setCarregando(false);
     }
   };
 
-  // Função para calcular o resultado
   const calcular = () => {
     try {
-      // Validar campos obrigatórios
       if (!internet || !taxa) {
         Alert.alert("Erro", "Os campos Internet e Taxa são obrigatórios.");
         return;
@@ -104,14 +89,14 @@ const Calculadora = () => {
         return;
       }
 
-      // Converter valores para números
+      // Converte valores para números
       const internetValor = parseFloat(internet.replace(",", "."));
       const gas1Valor = gas1 ? parseFloat(gas1.replace(",", ".")) : 0;
       const gas2Valor = gas2 ? parseFloat(gas2.replace(",", ".")) : 0;
       const taxaValor = parseFloat(taxa.replace(",", "."));
       const qtdPessoas = parseInt(quantidadePessoas);
 
-      // Validar se os valores são números válidos
+      // Valida se os valores são números válidos
       if (isNaN(internetValor) || isNaN(taxaValor) || isNaN(qtdPessoas)) {
         Alert.alert("Erro", "Por favor, insira valores numéricos válidos.");
         return;
@@ -125,16 +110,15 @@ const Calculadora = () => {
         return;
       }
 
-      // Calcular o valor da internet dividido pelo total de pessoas cadastradas
+      // Calcula o valor da internet dividido pelo total de pessoas cadastradas
       const internetPorPessoa = internetValor / totalPessoasCadastradas;
 
-      // Calcular o valor do gás dividido pela quantidade de pessoas informada
+      // Calcula o valor do gás dividido pela quantidade de pessoas informada
       const gasPorPessoa = (gas1Valor + gas2Valor) / qtdPessoas;
 
-      // Calcular o resultado final
+      // Calcula o resultado final
       const resultadoFinal = internetPorPessoa + gasPorPessoa + taxaValor;
 
-      // Atualizar o estado com o resultado
       setResultado(resultadoFinal);
 
       console.log(
@@ -146,7 +130,6 @@ const Calculadora = () => {
     }
   };
 
-  // Função para limpar o resultado e os campos
   const limpar = () => {
     setInternet("");
     setGas1("");
@@ -156,7 +139,6 @@ const Calculadora = () => {
     setResultado(null);
   };
 
-  // Função para formatar valor em reais
   const formatarValor = (valor: number): string => {
     return `R$ ${valor.toFixed(2).replace(".", ",")}`;
   };
